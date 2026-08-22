@@ -3,3 +3,5 @@ out
 *.vsix
 
 .DS_Store
+/.cursor/rules/ai-rules/
+/.clinerules/ai-rules/

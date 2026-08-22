@@ -138,8 +138,11 @@ describe("parseChromeScope", () => {
 });
 
 describe("parseRandomSeed", () => {
-  it("returns undefined when the seed is 0, non-finite, or not a number", () => {
+  it("returns undefined when the seed is not a valid non-zero uint32", () => {
     assert.equal(parseRandomSeed(0), undefined);
+    assert.equal(parseRandomSeed(-1), undefined);
+    assert.equal(parseRandomSeed(1.5), undefined);
+    assert.equal(parseRandomSeed(4294967296), undefined);
     assert.equal(parseRandomSeed(Number.NaN), undefined);
     assert.equal(parseRandomSeed(Number.POSITIVE_INFINITY), undefined);
     assert.equal(parseRandomSeed("1"), undefined);
@@ -149,14 +152,7 @@ describe("parseRandomSeed", () => {
   it("returns the uint32 value when the seed is a positive finite number", () => {
     assert.equal(parseRandomSeed(1), 1);
     assert.equal(parseRandomSeed(2843109148), 2843109148);
-  });
-
-  it("wraps negative seeds to uint32 when given -1", () => {
-    assert.equal(parseRandomSeed(-1), 4294967295);
-  });
-
-  it("returns undefined when uint32 wrap yields 0", () => {
-    assert.equal(parseRandomSeed(4294967296), undefined);
+    assert.equal(parseRandomSeed(4294967295), 4294967295);
   });
 });
 

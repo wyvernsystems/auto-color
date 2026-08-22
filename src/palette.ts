@@ -90,11 +90,15 @@ export function parseChromeScope(value: unknown): ChromeScope {
 }
 
 export function parseRandomSeed(raw: unknown): number | undefined {
-  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+  if (
+    typeof raw !== "number" ||
+    !Number.isInteger(raw) ||
+    raw <= 0 ||
+    raw > 0xffffffff
+  ) {
     return undefined;
   }
-  const u = raw >>> 0;
-  return u === 0 ? undefined : u;
+  return raw;
 }
 
 export function shouldApplyChrome(

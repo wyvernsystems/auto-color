@@ -4,6 +4,11 @@ All notable changes to **Auto Color** will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Automatic coloring now remains blocked until workspace-file checks finish and fails closed on filesystem errors instead of treating every error as a missing settings file.
+- Invalid random seeds from manually edited settings are rejected unless they are whole numbers in the documented unsigned 32-bit range.
+
 ## [1.0.5] - 2026-05-05
 
 ### Fixed

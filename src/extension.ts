@@ -10,6 +10,11 @@ import {
   type ChromeScope,
 } from "./palette";
 import { isNonEmptyPlainObject } from "./settings-shape";
+import {
+  AutomaticWriteGate,
+  settingsPathExists,
+  workspaceFileBlocksAutomaticColor,
+} from "./workspace-eligibility";
 
 const CONFIG_SECTION = "auto-color";
 
@@ -134,23 +139,32 @@ async function hasExistingWorkspaceSettingsFile(): Promise<boolean> {
 
   const workspaceFile = vscode.workspace.workspaceFile;
   if (workspaceFile) {
+    let raw: Uint8Array;
     try {
-      const raw = await vscode.workspace.fs.readFile(workspaceFile);
-      const text = new TextDecoder("utf-8").decode(raw);
-      const json = JSON.parse(text) as { settings?: unknown };
-      if (isNonEmptyPlainObject(json.settings)) {
-        return true;
-      }
-    } catch {
+      raw = await vscode.workspace.fs.readFile(workspaceFile);
+    } catch (error) {
+      throw new Error(
+        "Unable to read the workspace file before applying Auto Color",
+        { cause: error },
+      );
+    }
+    const text = new TextDecoder("utf-8").decode(raw);
+    if (workspaceFileBlocksAutomaticColor(text)) {
       return true;
     }
     for (const folder of folders) {
-      const settingsUri = vscode.Uri.joinPath(folder.uri, ".vscode", "settings.json");
-      try {
-        await vscode.workspace.fs.stat(settingsUri);
+      const settingsUri = vscode.Uri.joinPath(
+        folder.uri,
+        ".vscode",
+        "settings.json",
+      );
+      if (
+        await settingsPathExists(
+          async () => vscode.workspace.fs.stat(settingsUri),
+          "workspace folder settings file",
+        )
+      ) {
         return true;
-      } catch {
-        /* try next folder */
       }
     }
     return false;
@@ -161,12 +175,10 @@ async function hasExistingWorkspaceSettingsFile(): Promise<boolean> {
     ".vscode",
     "settings.json",
   );
-  try {
-    await vscode.workspace.fs.stat(settingsUri);
-    return true;
-  } catch {
-    return false;
-  }
+  return settingsPathExists(
+    async () => vscode.workspace.fs.stat(settingsUri),
+    "workspace settings file",
+  );
 }
 
 function requireFolder(): boolean {
@@ -179,44 +191,56 @@ function requireFolder(): boolean {
   return true;
 }
 
+function runInBackground(
+  operation: string,
+  task: () => Promise<void>,
+): void {
+  void task().catch((error: unknown) => {
+    console.error(`Auto Color: ${operation} failed`, error);
+    void vscode.window.showErrorMessage(
+      `Auto Color could not ${operation}. See the extension host log for details.`,
+    );
+  });
+}
+
 export function activate(context: vscode.ExtensionContext): void {
-  /** When false, startup and auto-color config changes do not write workspace settings (existing files, workspace JSON, or workspace color customizations). Commands still apply. */
-  let allowAutomaticWorkspaceChrome = true;
+  const automaticWriteGate = new AutomaticWriteGate();
 
   const refreshAllowAutomaticWorkspaceChrome = async () => {
-    if (!vscode.workspace.workspaceFolders?.length) {
-      allowAutomaticWorkspaceChrome = false;
-      return;
-    }
-    const hasSettingsFile = await hasExistingWorkspaceSettingsFile();
-    const hasStoredColors = hasWorkspaceStoredColorCustomizations();
-    allowAutomaticWorkspaceChrome = !hasSettingsFile && !hasStoredColors;
+    await automaticWriteGate.refresh(async () => {
+      if (!vscode.workspace.workspaceFolders?.length) {
+        return true;
+      }
+      const hasSettingsFile = await hasExistingWorkspaceSettingsFile();
+      const hasStoredColors = hasWorkspaceStoredColorCustomizations();
+      return hasSettingsFile || hasStoredColors;
+    });
   };
 
   const runAutomaticSyncIfAllowed = async () => {
-    if (!allowAutomaticWorkspaceChrome) {
+    if (!automaticWriteGate.isAllowed()) {
       return;
     }
     await syncWorkspaceChrome();
   };
 
-  void (async () => {
+  runInBackground("initialize workspace colors", async () => {
     await refreshAllowAutomaticWorkspaceChrome();
     await runAutomaticSyncIfAllowed();
-  })();
+  });
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
-      void (async () => {
+      runInBackground("refresh workspace colors", async () => {
         await refreshAllowAutomaticWorkspaceChrome();
         await runAutomaticSyncIfAllowed();
-      })();
+      });
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration(CONFIG_SECTION)) {
         return;
       }
-      void runAutomaticSyncIfAllowed();
+      runInBackground("update workspace colors", runAutomaticSyncIfAllowed);
     }),
     vscode.commands.registerCommand(
       "auto-color.enableGlobal",
