@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   AutomaticWriteGate,
   isFileNotFoundError,
+  manualRemovalBlocksAutomaticColor,
+  SelfWriteTracker,
   settingsPathExists,
   workspaceFileBlocksAutomaticColor,
 } from "./workspace-eligibility";
@@ -80,6 +82,21 @@ describe("workspaceFileBlocksAutomaticColor", () => {
   });
 });
 
+describe("manualRemovalBlocksAutomaticColor", () => {
+  it("blocks when a previously painted workspace no longer has managed colors", () => {
+    assert.equal(manualRemovalBlocksAutomaticColor(true, false), true);
+  });
+
+  it("allows a workspace the extension never painted", () => {
+    assert.equal(manualRemovalBlocksAutomaticColor(false, false), false);
+    assert.equal(manualRemovalBlocksAutomaticColor(false, true), false);
+  });
+
+  it("allows a painted workspace whose managed colors are still present", () => {
+    assert.equal(manualRemovalBlocksAutomaticColor(true, true), false);
+  });
+});
+
 describe("AutomaticWriteGate", () => {
   it("denies writes until a refresh confirms the workspace is unblocked", async () => {
     let finishRefresh: ((blocked: boolean) => void) | undefined;
@@ -115,5 +132,20 @@ describe("AutomaticWriteGate", () => {
     await firstRefresh;
 
     assert.equal(gate.isAllowed(), false);
+  });
+});
+
+describe("SelfWriteTracker", () => {
+  it("reports no recent write before the first mark", () => {
+    const tracker = new SelfWriteTracker(2000);
+    assert.equal(tracker.isRecent(1000), false);
+  });
+
+  it("reports a recent write within the window and forgets it after", () => {
+    const tracker = new SelfWriteTracker(2000);
+    tracker.mark(1000);
+    assert.equal(tracker.isRecent(1000), true);
+    assert.equal(tracker.isRecent(2999), true);
+    assert.equal(tracker.isRecent(3001), false);
   });
 });

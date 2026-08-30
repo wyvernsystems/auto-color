@@ -1,8 +1,8 @@
 {
   "name": "auto-color",
   "displayName": "Auto Color",
-  "description": "Workspace-tinted UI: pastel title, activity, and status bars plus a subtle hue across the workbench—golden-ratio palettes, native-style depth, zero setup.",
-  "version": "1.0.5",
+  "description": "Workspace-tinted UI: pastel title, activity, and status bars plus a subtle hue across the workbench—golden-ratio palettes, native-style depth, zero setup. Or pick a named theme: Matrix, GitHub Dark/Light, Dracula, Nord, Solarized, Rainbow, and more.",
+  "version": "2.0.0",
   "license": "MIT",
   "publisher": "WyvernSystemsLLC",
   "repository": {
@@ -29,6 +29,11 @@
     "status bar",
     "pastel",
     "multi-root",
+    "matrix",
+    "dracula",
+    "nord",
+    "solarized",
+    "rainbow",
     "AutoColorWorkspace"
   ],
   "galleryBanner": {
@@ -36,14 +41,7 @@
     "theme": "dark"
   },
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:auto-color.enableGlobal",
-    "onCommand:auto-color.disableGlobal",
-    "onCommand:auto-color.enableWorkspace",
-    "onCommand:auto-color.disableWorkspace",
-    "onCommand:auto-color.setScope",
-    "onCommand:auto-color.randomize",
-    "onCommand:auto-color.resetColor"
+    "onStartupFinished"
   ],
   "contributes": {
     "commands": [
@@ -70,6 +68,10 @@
       {
         "command": "auto-color.randomize",
         "title": "Auto Color: Randomize color"
+      },
+      {
+        "command": "auto-color.selectTheme",
+        "title": "Auto Color: Select theme"
       },
       {
         "command": "auto-color.resetColor",
@@ -108,13 +110,86 @@
           "markdownDescription": "Same as **Auto Color: Disable for this workspace** / **Enable for this workspace**. When enabled, this folder’s workspace skips Auto Color even if the global switch is on.",
           "description": "Turn Auto Color off for this workspace only. Same as per-workspace enable/disable commands."
         },
+        "auto-color.identitySource": {
+          "type": "string",
+          "enum": ["path", "folderName", "gitRemote"],
+          "enumDescriptions": [
+            "Hash the full folder path. Same folder, same color on this machine; clones at other paths differ.",
+            "Hash only the folder name. The same folder name gets the same color on every machine.",
+            "Hash the git origin remote URL, so every clone of a repo shares one color. Falls back to the folder name when the remote can't be read (no origin remote, or a linked git worktree)."
+          ],
+          "default": "path",
+          "scope": "window",
+          "order": 4,
+          "markdownDescription": "What the default (non-random) color is derived from. `path` keeps the classic per-path colors; `folderName` and `gitRemote` keep a project's color stable across machines and clones.",
+          "description": "What the default color is derived from: the folder path, the folder name, or the git origin remote."
+        },
+        "auto-color.theme": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "matrix",
+            "githubDark",
+            "githubLight",
+            "dracula",
+            "nord",
+            "solarizedDark",
+            "solarizedLight",
+            "monokai",
+            "gruvboxDark",
+            "oneDark",
+            "synthwave",
+            "ocean",
+            "sunset",
+            "rainbow"
+          ],
+          "enumItemLabels": [
+            "Auto",
+            "Matrix",
+            "GitHub Dark",
+            "GitHub Light",
+            "Dracula",
+            "Nord",
+            "Solarized Dark",
+            "Solarized Light",
+            "Monokai",
+            "Gruvbox Dark",
+            "One Dark",
+            "Synthwave",
+            "Ocean",
+            "Sunset",
+            "Rainbow"
+          ],
+          "enumDescriptions": [
+            "Derive the palette from this workspace (default).",
+            "Phosphor green on near-black.",
+            "Slate blue-gray, GitHub's dark look.",
+            "Clean white with cool gray chrome.",
+            "Muted purple on a dark slate.",
+            "Arctic frost blues.",
+            "Deep teal, Solarized's dark base.",
+            "Warm parchment, Solarized's light base.",
+            "Olive-tinted charcoal.",
+            "Retro warm browns and orange.",
+            "Atom's cool gray-blue.",
+            "Neon pink on deep purple.",
+            "Deep sea blues and teals.",
+            "Rose, orange, and gold bars.",
+            "A different hue per bar; follows your light/dark theme."
+          ],
+          "default": "auto",
+          "scope": "window",
+          "order": 5,
+          "markdownDescription": "Same as **Auto Color: Select theme**. `auto` derives the palette from the workspace; any named theme paints that fixed palette instead (the workspace identity and random seed are ignored).",
+          "description": "Theme palette to paint: auto (workspace-derived) or a named theme. Same as the Select theme command."
+        },
         "auto-color.randomSeed": {
           "type": "number",
           "default": 0,
           "minimum": 0,
           "maximum": 4294967295,
           "scope": "window",
-          "order": 4,
+          "order": 6,
           "markdownDescription": "Non-zero locks the palette to a random choice (set by **Randomize color**). Use `0` or clear for folder-path colors (**Reset to default color**).",
           "description": "Random palette seed; 0 means derive from folder path. Set by Randomize / Reset commands."
         }
@@ -122,11 +197,15 @@
     }
   },
   "main": "./out/extension.js",
+  "bin": {
+    "auto-color": "./out/cli.js"
+  },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run clean && npm run compile",
+    "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "tsc -p ./ && node --test out/*.test.js",
+    "test": "npm run clean && tsc -p ./ && node --test \"out/**/*.test.js\"",
     "package": "vsce package"
   },
   "devDependencies": {

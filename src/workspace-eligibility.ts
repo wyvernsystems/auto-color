@@ -1,4 +1,4 @@
-import { isNonEmptyPlainObject } from "./settings-shape";
+import { isNonEmptyPlainObject } from "./core/settings-shape";
 
 type ErrorWithCode = {
   code?: unknown;
@@ -43,6 +43,40 @@ export function workspaceFileBlocksAutomaticColor(text: string): boolean {
   } catch {
     // Invalid JSON is an existing user-owned workspace file, so fail closed.
     return true;
+  }
+}
+
+/**
+ * True when the user manually removed Auto Color's keys: the extension painted
+ * this workspace before (and did not strip it itself), yet no managed color key
+ * remains in workspace settings. Automatic coloring must then stay off until an
+ * explicit command opts back in, so deleted color lines or files are not
+ * recreated — even across window reloads.
+ */
+export function manualRemovalBlocksAutomaticColor(
+  previouslyPainted: boolean,
+  workspaceHasManagedColors: boolean,
+): boolean {
+  return previouslyPainted && !workspaceHasManagedColors;
+}
+
+/**
+ * Remembers when the extension last wrote workspace settings so filesystem
+ * watcher events caused by its own writes can be told apart from the user's.
+ */
+export class SelfWriteTracker {
+  private lastWriteAt: number | undefined;
+
+  constructor(private readonly windowMs: number) {}
+
+  mark(now: number): void {
+    this.lastWriteAt = now;
+  }
+
+  isRecent(now: number): boolean {
+    return (
+      this.lastWriteAt !== undefined && now - this.lastWriteAt <= this.windowMs
+    );
   }
 }
 

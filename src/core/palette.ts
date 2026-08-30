@@ -3,6 +3,8 @@ export const MAX_FOLDER_PATH_LEN = 4096;
 
 export type ChromeScope = "all" | "headFooter";
 
+export type ThemeKind = "dark" | "light";
+
 export type ColorMap = Record<string, string | undefined>;
 
 export const TITLE_BG = "titleBar.activeBackground" as const;
@@ -87,6 +89,33 @@ const INV_PHI = 1 / PHI;
 
 export function parseChromeScope(value: unknown): ChromeScope {
   return value === "headFooter" ? "headFooter" : "all";
+}
+
+/** Maps `vscode.ColorThemeKind` (Light = 1, HighContrastLight = 4) to a palette theme kind. */
+export function themeKindFromVsCode(kind: unknown): ThemeKind {
+  return kind === 1 || kind === 4 ? "light" : "dark";
+}
+
+export function hasManagedColorKeys(existing: ColorMap): boolean {
+  return ALL_MANAGED_KEYS.some((key) => existing[key] !== undefined);
+}
+
+/** Draws until it has `count` unique seeds accepted by `parseRandomSeed`. */
+export function generateSeedCandidates(
+  nextUint32: () => number,
+  count: number,
+): number[] {
+  const seeds = new Set<number>();
+  let attempts = 0;
+  const maxAttempts = count * 100;
+  while (seeds.size < count && attempts < maxAttempts) {
+    attempts++;
+    const seed = parseRandomSeed(nextUint32());
+    if (seed !== undefined) {
+      seeds.add(seed);
+    }
+  }
+  return [...seeds];
 }
 
 export function parseRandomSeed(raw: unknown): number | undefined {
@@ -195,44 +224,128 @@ type Region = {
   bg: typeof TITLE_BG | typeof ACTIVITY_BG | typeof STATUS_BG;
   fg: typeof TITLE_FG | typeof ACTIVITY_FG | typeof STATUS_FG;
   bgHex: string;
+  fgHex: string;
 };
+
+export type Hsl = { h: number; s: number; l: number };
+
+/** Editor-agnostic colors for a workspace; writers map these to editor-specific keys. */
+export type WorkspacePalette = {
+  titleBg: string;
+  titleFg: string;
+  activityBg: string;
+  activityFg: string;
+  statusBg: string;
+  statusFg: string;
+  editorBg: string;
+  editorHighlightBg: string;
+  sidebarBg: string;
+  sidebarSectionBg: string;
+  tabsHeaderBg: string;
+  tabInactiveBg: string;
+  tabActiveBg: string;
+  panelBg: string;
+  terminalBg: string;
+  breadcrumbBg: string;
+  widgetBg: string;
+  listActiveBg: string;
+  listHoverBg: string;
+  listInactiveBg: string;
+  border: string;
+};
+
+/**
+ * Composes a full palette from per-bar chrome colors and a surface tint.
+ * Bar foregrounds are contrast-derived unless `barFg` overrides them.
+ */
+export function composeWorkspacePalette(opts: {
+  bars: { title: Hsl; activity: Hsl; status: Hsl };
+  surface: { h: number; s: number; editorL?: number };
+  themeKind: ThemeKind;
+  barFg?: string;
+}): WorkspacePalette {
+  const { bars, surface, themeKind, barFg } = opts;
+
+  const titleBg = hslToHex(bars.title.h, bars.title.s, bars.title.l);
+  const activityBg = hslToHex(bars.activity.h, bars.activity.s, bars.activity.l);
+  const statusBg = hslToHex(bars.status.h, bars.status.s, bars.status.l);
+
+  // Surfaces start at the base editor lightness and step away from it: lighter
+  // shades in dark themes, darker shades in light themes.
+  const isLight = themeKind === "light";
+  const editorL = surface.editorL ?? (isLight ? 0.945 : 0.118);
+  const dlSign = isLight ? -1 : 1;
+  const surf = (sat: number, dl: number) =>
+    hslToHex(surface.h, surface.s * sat, editorL + dlSign * dl);
+
+  const editorBg = surf(0.55, 0);
+
+  return {
+    titleBg,
+    titleFg: barFg ?? contrastingForegroundHex(titleBg),
+    activityBg,
+    activityFg: barFg ?? contrastingForegroundHex(activityBg),
+    statusBg,
+    statusFg: barFg ?? contrastingForegroundHex(statusBg),
+    editorBg,
+    editorHighlightBg: surf(0.7, 0.008),
+    sidebarBg: surf(1.0, 0.027),
+    sidebarSectionBg: surf(1.0, 0.04),
+    tabsHeaderBg: surf(0.65, 0.058),
+    tabInactiveBg: surf(0.6, 0.058),
+    tabActiveBg: editorBg,
+    panelBg: surf(0.45, 0),
+    terminalBg: editorBg,
+    breadcrumbBg: surf(0.55, 0.005),
+    widgetBg: surf(0.6, 0.027),
+    listActiveBg: surf(1.1, 0.05),
+    listHoverBg: surf(0.8, 0.02),
+    listInactiveBg: surf(0.9, 0.028),
+    border: surf(0.4, 0.149),
+  };
+}
+
+export function computeWorkspacePalette(
+  hash: number,
+  themeKind: ThemeKind = "dark",
+): WorkspacePalette {
+  const { h, s, l } = hashToPastelBase(hash);
+  return composeWorkspacePalette({
+    bars: {
+      title: { h, s, l: clampLightness(l - SHADE_DL) },
+      activity: { h, s, l: clampLightness(l) },
+      status: { h, s, l: clampLightness(l + SHADE_DL) },
+    },
+    surface: { h, s: Math.min(s * 1.6, 0.4) },
+    themeKind,
+  });
+}
 
 export function buildColorCustomizations(opts: {
   hash: number;
   scope: ChromeScope;
   existing: ColorMap;
+  themeKind?: ThemeKind;
 }): ColorMap {
-  const { hash, scope, existing } = opts;
-  const { h, s, l } = hashToPastelBase(hash);
+  const { hash, scope, existing, themeKind = "dark" } = opts;
+  return buildColorCustomizationsFromPalette({
+    palette: computeWorkspacePalette(hash, themeKind),
+    scope,
+    existing,
+  });
+}
 
-  const titleBgHex = hslToHex(h, s, clampLightness(l - SHADE_DL));
-  const activityBgHex = hslToHex(h, s, clampLightness(l));
-  const statusBgHex = hslToHex(h, s, clampLightness(l + SHADE_DL));
-
-  const tintS = Math.min(s * 1.6, 0.4);
-  const editorL = 0.118;
-  const surf = (sat: number, dl: number) => hslToHex(h, tintS * sat, editorL + dl);
-
-  const editorBg = surf(0.55, 0);
-  const editorHighlightBg = surf(0.7, 0.008);
-  const sidebarBg = surf(1.0, 0.027);
-  const sidebarSectionBg = surf(1.0, 0.04);
-  const tabsHeaderBg = surf(0.65, 0.058);
-  const tabInactiveBg = surf(0.6, 0.058);
-  const tabActiveBg = editorBg;
-  const panelBg = surf(0.45, 0);
-  const terminalBg = editorBg;
-  const breadcrumbBg = surf(0.55, 0.005);
-  const widgetBg = surf(0.6, 0.027);
-  const listActiveBg = surf(1.1, 0.05);
-  const listHoverBg = surf(0.8, 0.02);
-  const listInactiveBg = surf(0.9, 0.028);
-  const borderHex = surf(0.4, 0.149);
+export function buildColorCustomizationsFromPalette(opts: {
+  palette: WorkspacePalette;
+  scope: ChromeScope;
+  existing: ColorMap;
+}): ColorMap {
+  const { palette: p, scope, existing } = opts;
 
   const regionsAll: Region[] = [
-    { bg: TITLE_BG, fg: TITLE_FG, bgHex: titleBgHex },
-    { bg: ACTIVITY_BG, fg: ACTIVITY_FG, bgHex: activityBgHex },
-    { bg: STATUS_BG, fg: STATUS_FG, bgHex: statusBgHex },
+    { bg: TITLE_BG, fg: TITLE_FG, bgHex: p.titleBg, fgHex: p.titleFg },
+    { bg: ACTIVITY_BG, fg: ACTIVITY_FG, bgHex: p.activityBg, fgHex: p.activityFg },
+    { bg: STATUS_BG, fg: STATUS_FG, bgHex: p.statusBg, fgHex: p.statusFg },
   ];
   const regions: Region[] =
     scope === "all" ? regionsAll : regionsAll.filter((r) => r.bg !== ACTIVITY_BG);
@@ -254,49 +367,49 @@ export function buildColorCustomizations(opts: {
 
   for (const r of regions) {
     next[r.bg] = r.bgHex;
-    next[r.fg] = contrastingForegroundHex(r.bgHex);
+    next[r.fg] = r.fgHex;
   }
 
   if (scope === "all") {
-    next["sideBar.background"] = sidebarBg;
-    next["sideBar.border"] = borderHex;
-    next["sideBarSectionHeader.background"] = sidebarSectionBg;
-    next["sideBarSectionHeader.border"] = borderHex;
-    next["list.activeSelectionBackground"] = listActiveBg;
-    next["list.hoverBackground"] = listHoverBg;
-    next["list.inactiveSelectionBackground"] = listInactiveBg;
-    next["editor.background"] = editorBg;
-    next["editor.lineHighlightBackground"] = editorHighlightBg;
-    next["editorGutter.background"] = editorBg;
-    next["editorGroupHeader.tabsBackground"] = tabsHeaderBg;
-    next["editorGroupHeader.noTabsBackground"] = tabsHeaderBg;
-    next["tab.inactiveBackground"] = tabInactiveBg;
-    next["tab.activeBackground"] = tabActiveBg;
-    next["tab.border"] = borderHex;
-    next["tab.activeBorder"] = borderHex;
-    next["panel.background"] = panelBg;
-    next["panel.border"] = borderHex;
-    next["terminal.background"] = terminalBg;
-    next["breadcrumb.background"] = breadcrumbBg;
-    next["editorWidget.background"] = widgetBg;
-    next["editorWidget.border"] = borderHex;
-    next["editorGroup.border"] = borderHex;
-    next["activityBar.border"] = borderHex;
-    next["titleBar.border"] = borderHex;
-    next["statusBar.border"] = borderHex;
-    next["welcomePage.background"] = editorBg;
-    next["welcomePage.tileBackground"] = sidebarBg;
-    next["walkThrough.embeddedEditorBackground"] = editorBg;
-    next["editorGroup.emptyBackground"] = editorBg;
-    next["editorPane.background"] = editorBg;
-    next["sideBarTitle.background"] = sidebarBg;
-    next["panelTitle.activeBorder"] = borderHex;
-    next["textBlockQuote.background"] = sidebarBg;
-    next["input.background"] = sidebarBg;
-    next["dropdown.background"] = sidebarBg;
-    next["quickInput.background"] = widgetBg;
-    next["notifications.background"] = widgetBg;
-    next["debugToolBar.background"] = widgetBg;
+    next["sideBar.background"] = p.sidebarBg;
+    next["sideBar.border"] = p.border;
+    next["sideBarSectionHeader.background"] = p.sidebarSectionBg;
+    next["sideBarSectionHeader.border"] = p.border;
+    next["list.activeSelectionBackground"] = p.listActiveBg;
+    next["list.hoverBackground"] = p.listHoverBg;
+    next["list.inactiveSelectionBackground"] = p.listInactiveBg;
+    next["editor.background"] = p.editorBg;
+    next["editor.lineHighlightBackground"] = p.editorHighlightBg;
+    next["editorGutter.background"] = p.editorBg;
+    next["editorGroupHeader.tabsBackground"] = p.tabsHeaderBg;
+    next["editorGroupHeader.noTabsBackground"] = p.tabsHeaderBg;
+    next["tab.inactiveBackground"] = p.tabInactiveBg;
+    next["tab.activeBackground"] = p.tabActiveBg;
+    next["tab.border"] = p.border;
+    next["tab.activeBorder"] = p.border;
+    next["panel.background"] = p.panelBg;
+    next["panel.border"] = p.border;
+    next["terminal.background"] = p.terminalBg;
+    next["breadcrumb.background"] = p.breadcrumbBg;
+    next["editorWidget.background"] = p.widgetBg;
+    next["editorWidget.border"] = p.border;
+    next["editorGroup.border"] = p.border;
+    next["activityBar.border"] = p.border;
+    next["titleBar.border"] = p.border;
+    next["statusBar.border"] = p.border;
+    next["welcomePage.background"] = p.editorBg;
+    next["welcomePage.tileBackground"] = p.sidebarBg;
+    next["walkThrough.embeddedEditorBackground"] = p.editorBg;
+    next["editorGroup.emptyBackground"] = p.editorBg;
+    next["editorPane.background"] = p.editorBg;
+    next["sideBarTitle.background"] = p.sidebarBg;
+    next["panelTitle.activeBorder"] = p.border;
+    next["textBlockQuote.background"] = p.sidebarBg;
+    next["input.background"] = p.sidebarBg;
+    next["dropdown.background"] = p.sidebarBg;
+    next["quickInput.background"] = p.widgetBg;
+    next["notifications.background"] = p.widgetBg;
+    next["debugToolBar.background"] = p.widgetBg;
   } else {
     for (const key of SURFACE_BG_KEYS) {
       delete next[key];

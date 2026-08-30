@@ -2,9 +2,11 @@
 
 ## What it does
 
-Auto Color picks a **color theme per workspace** and applies it to the window: pastel **title, activity, and status** bars and a matching **tint** on the editor, sidebar, tabs, terminal, and related UI. Your syntax theme still controls most text; this mainly changes **backgrounds** so each project looks distinct.
+Auto Color picks a **color theme per workspace** and applies it to the window: pastel **title, activity, and status** bars and a matching **tint** on the editor, sidebar, tabs, terminal, and related UI. Your syntax theme still controls most text; this mainly changes **backgrounds** so each project looks distinct. The tint follows your color theme—**dark themes get dark tinted surfaces, light themes get light ones**—and repaints automatically when you switch themes. Prefer a fixed look for a workspace? **Auto Color: Select theme** paints a **named theme** instead—Matrix, GitHub Dark/Light, Dracula, Nord, Solarized, Monokai, Gruvbox, One Dark, Synthwave, Ocean, Sunset, or Rainbow (see **Commands**).
 
 **What counts as a “workspace” here:** whatever VS Code or Cursor treats as the current workspace—almost always **a folder you opened** (**File → Open Folder**). That one folder (and its `.vscode/settings.json`) gets one palette. If you open **another window** with a **different** folder, that’s a **different** workspace and can have a **different** color. A **multi-root workspace** (a `.code-workspace` file with several folders) is still **one** workspace for this extension: colors and settings are stored with that workspace, and the **first** folder in the list is what the default tint is derived from (unless you use **Randomize**).
+
+**Where the default color comes from:** by default, from the **folder path**, so the same folder always gets the same color on your machine. The `auto-color.identitySource` setting can switch that to the **folder name** or the **git origin remote**—useful if you want a repo to keep one color across machines and clones. `gitRemote` falls back to the folder name when the remote can’t be read: no origin remote, or a linked git worktree (whose `.git` is a file this extension does not follow).
 
 **Existing workspace settings:** If `.vscode/settings.json` is already there—or, for a multi-root setup, the workspace JSON already has a **non-empty `settings`** block, **any** folder in that workspace has its own `.vscode/settings.json`, or workspace/folder settings already contain **`workbench.colorCustomizations`** (including colors stored only under a folder while the workspace file’s `settings` is empty)—Auto Color **does not run on window open**. It never touches that file automatically, so nothing is merged or overwritten while you are not asking for a tint. **When you do want colors**, use a command (for example, **Auto Color: Enable for this workspace**, **Randomize**, **Reset to default color**, **Set color scope**, or **Enable (all windows)** with a folder open). Only then does it write workspace settings: it updates **`workbench.colorCustomizations`** by **merging** in its keys next to any you already had in that object. It changes **only** the bar and tint keys it owns (and clears deprecated keys it used to set); everything else in `settings.json` stays as you left it. Disabling Auto Color or clearing colors removes **only** those managed keys, not the rest of your file. **If there is no workspace settings file yet**, it still applies the palette on load and creates **`.vscode/settings.json`**, so a new folder gets a tint without an extra step.
 
@@ -22,7 +24,7 @@ The extension saves colors through **workspace settings**. That usually creates 
 
 **`.vscode/settings.json`**
 
-Inside that file, it adds a `workbench.colorCustomizations` object with the hex colors for this workspace. Anything else in that file is left alone. If you disable Auto Color for the workspace or turn it off globally, it **removes only the keys it added** (and a few legacy keys), not your whole settings file. If you already have workspace settings and Auto Color does not apply on open, see **What it does** above.
+Inside that file, it adds a `workbench.colorCustomizations` object with the hex colors for this workspace. Anything else in that file is left alone. If you disable Auto Color for the workspace or turn it off globally, it **removes only the keys it added** (and a few legacy keys), not your whole settings file. **If you delete the color lines or the file yourself**, Auto Color takes the hint and does not add them back — not even after a reload or theme switch — until you ask again with a command such as **Enable for this workspace** or **Randomize color**. If you already have workspace settings and Auto Color does not apply on open, see **What it does** above.
 
 ## Security
 
@@ -41,18 +43,40 @@ Open the Command Palette (**Cmd+Shift+P** on Mac, **Ctrl+Shift+P** on Windows/Li
 | **Auto Color: Enable for this workspace**  | Turns coloring back on for **this** workspace only (still requires the global switch to be on).                                                                                                                    |
 | **Auto Color: Disable for this workspace** | Stops coloring **this** workspace and clears this extension’s keys here.                                                                                                                                           |
 | **Auto Color: Set color scope**            | **All bars**: title + activity + status plus the workbench tint. **Head and footer only**: title + status only; activity bar, editor, sidebar, tabs, panel, and other tinted areas go back to your theme defaults. |
-| **Auto Color: Randomize color**            | Picks a new random palette and saves it in workspace settings so it stays after reload.                                                                                                                            |
-| **Auto Color: Reset to default color**     | Removes the random override so the color is derived from the workspace folder path again.                                                                                                                          |
+| **Auto Color: Randomize color**            | Opens a palette picker with **live preview**: browse candidates to see them applied, press **Enter** to keep one (saved in workspace settings), or **Esc** to restore the previous color. Keeping one switches the theme back to **Auto**. |
+| **Auto Color: Select theme**               | Opens a **theme picker** with the same live preview: **Auto** (workspace-derived, the default) or a named theme — **Matrix**, **GitHub Dark**, **GitHub Light**, **Dracula**, **Nord**, **Solarized Dark/Light**, **Monokai**, **Gruvbox Dark**, **One Dark**, **Synthwave**, **Ocean**, **Sunset**, **Rainbow**. A named theme paints its fixed palette for this workspace; most bring their own light/dark surfaces, while **Rainbow** follows your color theme. |
+| **Auto Color: Reset to default color**     | Removes the random override and any workspace theme choice so the color is derived from the workspace identity again (folder path by default—see **Where the default color comes from**).                          |
 
 ## Settings UI
 
-Open **Settings** (**Cmd+,** / **Ctrl+,**), search **Auto Color**, or browse **Extensions → Auto Color**. You get the same options as the commands: **global on/off**, **color scope** (dropdown with short descriptions), **disable for this workspace**, and **random seed**. Use the **Workspace** tab when you want scope or per-workspace options for the current folder only.
+Open **Settings** (**Cmd+,** / **Ctrl+,**), search **Auto Color**, or browse **Extensions → Auto Color**. You get the same options as the commands: **global on/off**, **color scope** (dropdown with short descriptions), **disable for this workspace**, **identity source** (path, folder name, or git remote—see **What it does**), **theme** (auto or a named theme palette), and **random seed**. Use the **Workspace** tab when you want scope or per-workspace options for the current folder only.
 
 ## Install
 
-Requires **VS Code 1.85+** (Cursor is compatible). Search the Marketplace for **Auto Color** or install from a `.vsix`.
+Requires **VS Code 1.85+** (Cursor is compatible). Search the [VS Code Marketplace](https://marketplace.visualstudio.com/) or [Open VSX](https://open-vsx.org/) (used by VSCodium, Windsurf, and other forks) for **Auto Color**, or install from a `.vsix`.
 
 Marketplace icon: color wheel from [UXWing](https://uxwing.com/color-wheel-icon/) ([license](https://uxwing.com/license/)), resized to 128×128.
+
+## Other editors (`auto-color` CLI)
+
+The same palette engine also ships as a small CLI that writes a project's colors into the native settings of each supported editor found in the folder, so the project looks the same everywhere. Supported today:
+
+- **VS Code family** (VS Code, Cursor, Windsurf, VSCodium, …) — `.vscode/settings.json`
+- **Zed** — `.zed/settings.json` via `experimental.theme_overrides` (an experimental Zed setting; keys may change between Zed releases)
+
+It is not yet published to npm; from a checkout of this repo:
+
+```bash
+npm run compile && node out/cli.js /path/to/project --dry-run
+```
+
+Drop `--dry-run` to write. Editors are detected by their config directory (`.vscode`, `.zed`), or forced with `--targets vscode,zed`. Other flags mirror the extension's settings: `--source path|folderName|gitRemote` (use `gitRemote` or `folderName` so every clone of a repo gets the same color), `--scope all|headFooter`, `--seed N`, and `--remove` to take Auto Color's keys back out. The CLI only merges into files it can parse as strict JSON and never touches keys it does not own; a settings file with comments is left alone with a message.
+
+`--theme` accepts either a surface style for the derived palette—`dark` (default) or `light`—or one of the **named themes** from the extension's **Select theme** command: `matrix`, `githubDark`, `githubLight`, `dracula`, `nord`, `solarizedDark`, `solarizedLight`, `monokai`, `gruvboxDark`, `oneDark`, `synthwave`, `ocean`, `sunset`, `rainbow`. A named theme paints that fixed palette (the workspace identity and `--seed` are ignored); most bring their own light or dark surfaces, and `rainbow`—which follows your color theme in the extension—uses dark surfaces in the CLI. For example:
+
+```bash
+node out/cli.js /path/to/project --theme matrix
+```
 
 ## Examples
 
@@ -64,4 +88,4 @@ Marketplace icon: color wheel from [UXWing](https://uxwing.com/color-wheel-icon/
 
 ![Cursor example — Auto Color, purple tint](images/readme-hero-cursor.png)
 
-Repository: [wyvernsystems/auto-color-vscode-extension](https://github.com/wyvernsystems/auto-color-vscode-extension) · [MIT](LICENSE) · [Security](SECURITY.md)
+Repository: [wyvernsystems/auto-color-vscode-extension](https://github.com/wyvernsystems/auto-color-vscode-extension) · [MIT](LICENSE) · [Security](SECURITY.md) · [Releasing](docs/RELEASING.md)

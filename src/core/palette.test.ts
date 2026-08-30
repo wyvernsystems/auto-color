@@ -6,10 +6,15 @@ import {
   ALL_CHROME_KEYS,
   ALL_MANAGED_KEYS,
   buildColorCustomizations,
+  buildColorCustomizationsFromPalette,
   clampLightness,
+  composeWorkspacePalette,
+  computeWorkspacePalette,
   contrastingForegroundHex,
   DEPRECATED_COLOR_KEYS,
+  generateSeedCandidates,
   hashToPastelBase,
+  hasManagedColorKeys,
   hashWorkspaceIdentity,
   hslToHex,
   MAX_FOLDER_PATH_LEN,
@@ -21,6 +26,7 @@ import {
   STATUS_FG,
   stripManagedColorCustomizations,
   SURFACE_BG_KEYS,
+  themeKindFromVsCode,
   TITLE_BG,
   TITLE_FG,
 } from "./palette";
@@ -241,6 +247,165 @@ describe("buildColorCustomizations", () => {
     const a = buildColorCustomizations({ hash, scope: "all", existing: {} });
     const b = buildColorCustomizations({ hash, scope: "all", existing: {} });
     assert.deepEqual(a, b);
+  });
+
+  it("defaults to dark surfaces when themeKind is omitted", () => {
+    const implicit = buildColorCustomizations({ hash, scope: "all", existing: {} });
+    const explicit = buildColorCustomizations({
+      hash,
+      scope: "all",
+      existing: {},
+      themeKind: "dark",
+    });
+    assert.deepEqual(implicit, explicit);
+    assert.ok(relativeLuminance(implicit["editor.background"]!) < 0.1);
+  });
+
+  it("paints light surfaces when themeKind is light", () => {
+    const next = buildColorCustomizations({
+      hash,
+      scope: "all",
+      existing: {},
+      themeKind: "light",
+    });
+    for (const key of ALL_MANAGED_KEYS) {
+      assert.match(next[key] ?? "", HEX, key);
+    }
+    assert.ok(relativeLuminance(next["editor.background"]!) > 0.7);
+    assert.ok(relativeLuminance(next["sideBar.background"]!) > 0.6);
+    assert.ok(
+      relativeLuminance(next["sideBar.border"]!) <
+        relativeLuminance(next["sideBar.background"]!),
+    );
+  });
+
+  it("keeps the same bar colors when only themeKind changes", () => {
+    const dark = buildColorCustomizations({
+      hash,
+      scope: "all",
+      existing: {},
+      themeKind: "dark",
+    });
+    const light = buildColorCustomizations({
+      hash,
+      scope: "all",
+      existing: {},
+      themeKind: "light",
+    });
+    for (const key of ALL_CHROME_KEYS) {
+      assert.equal(dark[key], light[key], key);
+    }
+  });
+});
+
+describe("buildColorCustomizationsFromPalette", () => {
+  const hash = hashWorkspaceIdentity("/Users/ron/project");
+
+  it("matches buildColorCustomizations when given the same hash-derived palette", () => {
+    const palette = computeWorkspacePalette(hash, "light");
+    assert.deepEqual(
+      buildColorCustomizationsFromPalette({ palette, scope: "all", existing: {} }),
+      buildColorCustomizations({ hash, scope: "all", existing: {}, themeKind: "light" }),
+    );
+  });
+
+  it("writes the palette's own foregrounds when they override contrast", () => {
+    const palette = {
+      ...computeWorkspacePalette(hash),
+      titleFg: "#00ff41",
+      activityFg: "#00ff41",
+      statusFg: "#00ff41",
+    };
+    const next = buildColorCustomizationsFromPalette({
+      palette,
+      scope: "all",
+      existing: {},
+    });
+    assert.equal(next[TITLE_FG], "#00ff41");
+    assert.equal(next[ACTIVITY_FG], "#00ff41");
+    assert.equal(next[STATUS_FG], "#00ff41");
+  });
+});
+
+describe("composeWorkspacePalette", () => {
+  it("uses contrast-derived bar foregrounds when no override is given", () => {
+    const palette = composeWorkspacePalette({
+      bars: {
+        title: { h: 0, s: 0, l: 0.1 },
+        activity: { h: 0, s: 0, l: 0.9 },
+        status: { h: 0, s: 0, l: 0.1 },
+      },
+      surface: { h: 0, s: 0 },
+      themeKind: "dark",
+    });
+    assert.equal(palette.titleFg, contrastingForegroundHex(palette.titleBg));
+    assert.equal(palette.activityFg, "#1e1e1e");
+    assert.equal(palette.statusFg, "#f3f3f3");
+  });
+
+  it("uses the given editor lightness when the surface overrides it", () => {
+    const palette = composeWorkspacePalette({
+      bars: {
+        title: { h: 120, s: 0.5, l: 0.1 },
+        activity: { h: 120, s: 0.5, l: 0.13 },
+        status: { h: 120, s: 0.5, l: 0.16 },
+      },
+      surface: { h: 120, s: 0.3, editorL: 0.9 },
+      themeKind: "dark",
+    });
+    assert.ok(relativeLuminance(palette.editorBg) > 0.6, palette.editorBg);
+  });
+});
+
+describe("themeKindFromVsCode", () => {
+  it("returns light for the light and high-contrast-light kinds", () => {
+    assert.equal(themeKindFromVsCode(1), "light");
+    assert.equal(themeKindFromVsCode(4), "light");
+  });
+
+  it("returns dark for dark kinds and unknown values", () => {
+    assert.equal(themeKindFromVsCode(2), "dark");
+    assert.equal(themeKindFromVsCode(3), "dark");
+    assert.equal(themeKindFromVsCode(undefined), "dark");
+    assert.equal(themeKindFromVsCode(99), "dark");
+  });
+});
+
+describe("hasManagedColorKeys", () => {
+  it("returns false when the map has no managed keys", () => {
+    assert.equal(hasManagedColorKeys({}), false);
+    assert.equal(hasManagedColorKeys({ "editor.cursor": "#ff0000" }), false);
+  });
+
+  it("returns true when a chrome or surface key is present", () => {
+    assert.equal(hasManagedColorKeys({ [TITLE_BG]: "#aabbcc" }), true);
+    assert.equal(
+      hasManagedColorKeys({ "editor.background": "#111111" }),
+      true,
+    );
+  });
+});
+
+describe("generateSeedCandidates", () => {
+  it("skips zero and duplicate draws until it has enough unique seeds", () => {
+    const draws = [0, 5, 5, 7, 9];
+    let i = 0;
+    const next = () => draws[Math.min(i++, draws.length - 1)];
+    assert.deepEqual(generateSeedCandidates(next, 3), [5, 7, 9]);
+  });
+
+  it("returns the requested number of valid seeds when draws are random", () => {
+    let state = 1;
+    const next = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state;
+    };
+    const seeds = generateSeedCandidates(next, 8);
+    assert.equal(seeds.length, 8);
+    assert.equal(new Set(seeds).size, 8);
+    for (const seed of seeds) {
+      assert.equal(parseRandomSeed(seed), seed);
+    }
   });
 });
 

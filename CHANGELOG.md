@@ -2,12 +2,28 @@
 
 All notable changes to **Auto Color** will be documented in this file.
 
-## [Unreleased]
+## [2.0.0] - 2026-08-30
+
+### Added
+
+- **Light themes:** the workbench tint now follows your color theme. Light themes get light tinted surfaces instead of the previous always-dark tint, and colors repaint automatically when you switch themes. Bar colors are unchanged.
+- **`auto-color.identitySource` setting:** choose what the default color is derived from — the folder path (default, unchanged behavior), the folder name, or the git origin remote. The last two keep a project's color stable across machines and clones. `gitRemote` falls back to the folder name when the remote can't be read (no origin remote, or a linked git worktree).
+- **Randomize color** now opens a palette picker with live preview: browse candidates to see them applied, press Enter to keep one, or Esc to restore the previous color.
+- **Named theme palettes:** a new **Auto Color: Select theme** command (and `auto-color.theme` setting) picks a fixed theme palette for the workspace instead of the derived color — Matrix, GitHub Dark, GitHub Light, Dracula, Nord, Solarized Dark/Light, Monokai, Gruvbox Dark, One Dark, Synthwave, Ocean, Sunset, or Rainbow — with the same live-preview picker. **Auto** (the default) keeps the classic workspace-derived color; **Reset to default color** also clears the workspace theme choice.
+- **Named themes in the CLI:** the CLI's `--theme` flag now also accepts a named theme (for example `--theme matrix`) in addition to `dark|light`, writing that fixed palette into every detected editor's settings.
+- **`auto-color` CLI for other editors:** a command-line tool (in this repo, not yet on npm) that writes the same workspace palette into the native settings of each editor detected in a folder — the VS Code family via `.vscode/settings.json` and Zed via `experimental.theme_overrides` in `.zed/settings.json` — with `--dry-run`, `--remove`, and the same source/scope/theme options as the extension. See **Other editors** in the README.
+
+### Changed
+
+- Creating or deleting `.vscode/settings.json` (or editing the `.code-workspace` file) mid-session now updates automatic-coloring eligibility without reloading the window.
+- Manually deleting Auto Color's color lines or settings file now sticks: the workspace remembers it was painted before, so automatic coloring stays off — including after window reloads and theme switches — until you opt back in with a command (for example **Enable for this workspace** or **Randomize color**).
 
 ### Fixed
 
 - Automatic coloring now remains blocked until workspace-file checks finish and fails closed on filesystem errors instead of treating every error as a missing settings file.
 - Invalid random seeds from manually edited settings are rejected unless they are whole numbers in the documented unsigned 32-bit range.
+
+[2.0.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.0.0
 
 ## [1.0.5] - 2026-05-05
 

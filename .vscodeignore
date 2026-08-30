@@ -3,6 +3,9 @@
 src/**
 out/**/*.test.js
 out/**/*.test.js.map
+out/cli.js
+out/cli/**
+out/writers/**
 .gitignore
 **/tsconfig.json
 **/*.map

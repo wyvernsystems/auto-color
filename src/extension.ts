@@ -1,22 +1,56 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
 import {
-  buildColorCustomizations,
+  buildColorCustomizationsFromPalette,
+  computeWorkspacePalette,
+  generateSeedCandidates,
+  hashToPastelBase,
   hashWorkspaceIdentity,
+  hasManagedColorKeys,
+  hslToHex,
   parseChromeScope,
   parseRandomSeed,
   shouldApplyChrome as chromeEnabled,
   stripManagedColorCustomizations,
+  themeKindFromVsCode,
   type ChromeScope,
-} from "./palette";
-import { isNonEmptyPlainObject } from "./settings-shape";
+  type ColorMap,
+} from "./core/palette";
+import {
+  computeThemePresetPalette,
+  parseThemePreset,
+  THEME_PRESET_CHOICES,
+  type ThemePreset,
+} from "./core/themes";
+import { isNonEmptyPlainObject } from "./core/settings-shape";
 import {
   AutomaticWriteGate,
+  isFileNotFoundError,
+  manualRemovalBlocksAutomaticColor,
+  SelfWriteTracker,
   settingsPathExists,
   workspaceFileBlocksAutomaticColor,
 } from "./workspace-eligibility";
+import {
+  folderNameFromPath,
+  normalizeGitRemoteUrl,
+  parseGitRemoteOriginUrl,
+  parseIdentitySource,
+} from "./core/workspace-identity";
 
 const CONFIG_SECTION = "auto-color";
+
+/** Watcher events within this window of one of our own writes are ignored. */
+const SELF_WRITE_WINDOW_MS = 2000;
+
+const selfWrites = new SelfWriteTracker(SELF_WRITE_WINDOW_MS);
+
+/**
+ * Persists whether this workspace currently holds colors the extension wrote,
+ * so a manual deletion of them can be told apart from a never-painted
+ * workspace. Bound to `workspaceState` in `activate`.
+ */
+let recordPaintedState: (painted: boolean) => Promise<void> = async () => {};
 
 function extensionSettings(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration(CONFIG_SECTION);
@@ -38,6 +72,10 @@ function getRandomSeed(): number | undefined {
   return parseRandomSeed(extensionSettings().get<number>("randomSeed"));
 }
 
+function getThemePreset(): ThemePreset {
+  return parseThemePreset(extensionSettings().get<string>("theme"));
+}
+
 function shouldApplyChrome(): boolean {
   return chromeEnabled(isGloballyEnabled(), isWorkspaceDisabled());
 }
@@ -47,34 +85,92 @@ async function stripChromeFromWorkspace(): Promise<void> {
   const existing =
     workbench.get<Record<string, string | undefined>>("colorCustomizations") ??
     {};
+  selfWrites.mark(Date.now());
   await workbench.update(
     "colorCustomizations",
     stripManagedColorCustomizations(existing),
     vscode.ConfigurationTarget.Workspace,
   );
+  await recordPaintedState(false);
 }
 
-async function paintWorkspaceChrome(): Promise<void> {
+/** Normalized origin remote of the folder's git repo, or undefined when there is none. */
+async function readGitRemoteIdentity(
+  folderUri: vscode.Uri,
+): Promise<string | undefined> {
+  const configUri = vscode.Uri.joinPath(folderUri, ".git", "config");
+  let raw: Uint8Array;
+  try {
+    raw = await vscode.workspace.fs.readFile(configUri);
+  } catch (error) {
+    // Not a git repo, or a worktree whose `.git` is a file: fall back.
+    if (
+      isFileNotFoundError(error) ||
+      (error as { code?: unknown })?.code === "FileNotADirectory"
+    ) {
+      return undefined;
+    }
+    throw new Error("Unable to read the git config for the workspace color", {
+      cause: error,
+    });
+  }
+  const url = parseGitRemoteOriginUrl(new TextDecoder("utf-8").decode(raw));
+  return url ? normalizeGitRemoteUrl(url) : undefined;
+}
+
+async function resolveIdentityHash(
+  folder: vscode.WorkspaceFolder,
+): Promise<number> {
+  const source = parseIdentitySource(
+    extensionSettings().get<string>("identitySource"),
+  );
+  const fsPath = folder.uri.fsPath;
+  if (source === "gitRemote") {
+    const remote = await readGitRemoteIdentity(folder.uri);
+    return hashWorkspaceIdentity(remote ?? folderNameFromPath(fsPath));
+  }
+  if (source === "folderName") {
+    return hashWorkspaceIdentity(folderNameFromPath(fsPath));
+  }
+  return hashWorkspaceIdentity(fsPath);
+}
+
+async function paintWorkspaceChrome(override?: {
+  hash?: number;
+  theme?: ThemePreset;
+}): Promise<void> {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders?.length) {
     return;
   }
 
   const scope = getChromeScope();
-  const primary = folders[0].uri.fsPath;
-  const seed = getRandomSeed();
-  const hash = seed ?? hashWorkspaceIdentity(primary);
+  const theme = override?.theme ?? getThemePreset();
+  const themeKind = themeKindFromVsCode(vscode.window.activeColorTheme.kind);
+
+  let palette;
+  if (theme === "auto") {
+    const hash =
+      override?.hash ??
+      getRandomSeed() ??
+      (await resolveIdentityHash(folders[0]));
+    palette = computeWorkspacePalette(hash, themeKind);
+  } else {
+    palette = computeThemePresetPalette(theme, themeKind);
+  }
 
   const workbench = vscode.workspace.getConfiguration("workbench");
   const existing =
     workbench.get<Record<string, string | undefined>>("colorCustomizations") ??
     {};
 
+  selfWrites.mark(Date.now());
   await workbench.update(
     "colorCustomizations",
-    buildColorCustomizations({ hash, scope, existing }),
+    buildColorCustomizationsFromPalette({ palette, scope, existing }),
     vscode.ConfigurationTarget.Workspace,
   );
+  await recordPaintedState(true);
 }
 
 async function syncWorkspaceChrome(): Promise<void> {
@@ -122,6 +218,36 @@ function hasWorkspaceStoredColorCustomizations(): boolean {
   }
 
   return false;
+}
+
+/**
+ * True when any workspace-persisted `workbench.colorCustomizations` (workspace
+ * or folder scope, not User/global) still contains a key the extension manages.
+ */
+function workspaceHasManagedColorCustomizations(): boolean {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders?.length) {
+    return false;
+  }
+
+  const inspections = [
+    vscode.workspace
+      .getConfiguration("workbench")
+      .inspect<ColorMap>("colorCustomizations"),
+    ...folders.map((folder) =>
+      vscode.workspace
+        .getConfiguration("workbench", folder.uri)
+        .inspect<ColorMap>("colorCustomizations"),
+    ),
+  ];
+
+  return inspections.some(
+    (ins) =>
+      (ins?.workspaceValue !== undefined &&
+        hasManagedColorKeys(ins.workspaceValue)) ||
+      (ins?.workspaceFolderValue !== undefined &&
+        hasManagedColorKeys(ins.workspaceFolderValue)),
+  );
 }
 
 /**
@@ -191,6 +317,57 @@ function requireFolder(): boolean {
   return true;
 }
 
+/**
+ * Quick pick whose highlighted item repaints the workspace as a preview.
+ * Previews are queued in order so the last highlighted choice is the one
+ * left on screen; resolves once the pick closes and all previews settle.
+ */
+async function pickWithLivePreview<T extends vscode.QuickPickItem>(opts: {
+  title: string;
+  placeholder: string;
+  items: T[];
+  activeItem?: T;
+  canPreview: boolean;
+  preview: (item: T) => Promise<void>;
+}): Promise<T | undefined> {
+  let previews = Promise.resolve();
+  const enqueuePreview = (item: T) => {
+    previews = previews
+      .then(() => opts.preview(item))
+      .catch((error: unknown) => {
+        console.error("Auto Color: palette preview failed", error);
+      });
+  };
+
+  const picked = await new Promise<T | undefined>((resolve) => {
+    const quickPick = vscode.window.createQuickPick<T>();
+    quickPick.title = opts.title;
+    quickPick.placeholder = opts.placeholder;
+    quickPick.items = opts.items;
+    if (opts.activeItem) {
+      quickPick.activeItems = [opts.activeItem];
+    }
+    let accepted: T | undefined;
+    quickPick.onDidChangeActive((active) => {
+      if (opts.canPreview && active[0]) {
+        enqueuePreview(active[0]);
+      }
+    });
+    quickPick.onDidAccept(() => {
+      accepted = quickPick.selectedItems[0] ?? quickPick.activeItems[0];
+      quickPick.hide();
+    });
+    quickPick.onDidHide(() => {
+      quickPick.dispose();
+      resolve(accepted);
+    });
+    quickPick.show();
+  });
+
+  await previews;
+  return picked;
+}
+
 function runInBackground(
   operation: string,
   task: () => Promise<void>,
@@ -205,6 +382,20 @@ function runInBackground(
 
 export function activate(context: vscode.ExtensionContext): void {
   const automaticWriteGate = new AutomaticWriteGate();
+
+  const PAINTED_STATE_KEY = "paintedWorkspace";
+  recordPaintedState = async (painted) => {
+    await context.workspaceState.update(PAINTED_STATE_KEY, painted);
+  };
+  const wasPainted = () =>
+    context.workspaceState.get<boolean>(PAINTED_STATE_KEY, false);
+
+  /** User deleted our color lines or file: stay hands-off until a command. */
+  const userRemovedManagedColors = () =>
+    manualRemovalBlocksAutomaticColor(
+      wasPainted(),
+      workspaceHasManagedColorCustomizations(),
+    );
 
   const refreshAllowAutomaticWorkspaceChrome = async () => {
     await automaticWriteGate.refresh(async () => {
@@ -221,19 +412,104 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!automaticWriteGate.isAllowed()) {
       return;
     }
+    if (userRemovedManagedColors()) {
+      return;
+    }
     await syncWorkspaceChrome();
   };
 
+  let settingsWatchers: vscode.FileSystemWatcher[] = [];
+
+  const onSettingsFileEvent = () => {
+    if (selfWrites.isRecent(Date.now())) {
+      return;
+    }
+    // Refresh eligibility only; never paint or strip here, so a file the user
+    // just deleted is not recreated and a file they just created is respected.
+    runInBackground(
+      "refresh workspace eligibility",
+      refreshAllowAutomaticWorkspaceChrome,
+    );
+  };
+
+  const rebuildSettingsWatchers = () => {
+    for (const watcher of settingsWatchers) {
+      watcher.dispose();
+    }
+    settingsWatchers = [];
+
+    const patterns: vscode.RelativePattern[] = (
+      vscode.workspace.workspaceFolders ?? []
+    ).map((folder) => new vscode.RelativePattern(folder, ".vscode/settings.json"));
+
+    const workspaceFile = vscode.workspace.workspaceFile;
+    if (workspaceFile?.scheme === "file") {
+      const name = workspaceFile.path.split("/").pop();
+      if (name) {
+        patterns.push(
+          new vscode.RelativePattern(
+            vscode.Uri.joinPath(workspaceFile, ".."),
+            name,
+          ),
+        );
+      }
+    }
+
+    for (const pattern of patterns) {
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      watcher.onDidCreate(onSettingsFileEvent);
+      watcher.onDidChange(onSettingsFileEvent);
+      watcher.onDidDelete(onSettingsFileEvent);
+      settingsWatchers.push(watcher);
+    }
+  };
+
+  rebuildSettingsWatchers();
+
   runInBackground("initialize workspace colors", async () => {
+    // Colors applied before the painted flag existed (or by the CLI) count as
+    // painted, so deleting them later is recognized as the user's choice.
+    if (
+      vscode.workspace.workspaceFolders?.length &&
+      workspaceHasManagedColorCustomizations()
+    ) {
+      await recordPaintedState(true);
+    }
     await refreshAllowAutomaticWorkspaceChrome();
     await runAutomaticSyncIfAllowed();
   });
 
   context.subscriptions.push(
+    new vscode.Disposable(() => {
+      for (const watcher of settingsWatchers) {
+        watcher.dispose();
+      }
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      rebuildSettingsWatchers();
       runInBackground("refresh workspace colors", async () => {
         await refreshAllowAutomaticWorkspaceChrome();
         await runAutomaticSyncIfAllowed();
+      });
+    }),
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      runInBackground("repaint colors for the new theme", async () => {
+        if (!vscode.workspace.workspaceFolders?.length) {
+          return;
+        }
+        if (!shouldApplyChrome()) {
+          return;
+        }
+        if (userRemovedManagedColors()) {
+          return;
+        }
+        const existing =
+          vscode.workspace
+            .getConfiguration("workbench")
+            .get<ColorMap>("colorCustomizations") ?? {};
+        if (automaticWriteGate.isAllowed() || hasManagedColorKeys(existing)) {
+          await paintWorkspaceChrome();
+        }
       });
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -304,16 +580,90 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!requireFolder()) {
           return;
         }
-        let seed = 0;
-        do {
-          seed = randomBytes(4).readUInt32BE(0);
-        } while (seed === 0);
-        await extensionSettings().update(
-          "randomSeed",
-          seed,
-          vscode.ConfigurationTarget.Workspace,
+        const seeds = generateSeedCandidates(
+          () => randomBytes(4).readUInt32BE(0),
+          8,
         );
-        if (shouldApplyChrome()) {
+        const canPreview = shouldApplyChrome();
+        type SeedItem = vscode.QuickPickItem & { seed: number };
+        const items: SeedItem[] = seeds.map((seed, index) => {
+          const { h, s, l } = hashToPastelBase(seed);
+          return {
+            label: `Palette ${index + 1}`,
+            description: hslToHex(h, s, l),
+            seed,
+          };
+        });
+
+        const picked = await pickWithLivePreview({
+          title: "Auto Color: Randomize color",
+          placeholder: canPreview
+            ? "Browse to preview, Enter to keep, Esc to restore"
+            : "Pick a palette to save for this workspace",
+          items,
+          canPreview,
+          // Preview as auto so the seed shows through a selected theme.
+          preview: (item) =>
+            paintWorkspaceChrome({ hash: item.seed, theme: "auto" }),
+        });
+
+        if (picked) {
+          if (getThemePreset() !== "auto") {
+            await extensionSettings().update(
+              "theme",
+              "auto",
+              vscode.ConfigurationTarget.Workspace,
+            );
+          }
+          await extensionSettings().update(
+            "randomSeed",
+            picked.seed,
+            vscode.ConfigurationTarget.Workspace,
+          );
+          if (shouldApplyChrome()) {
+            await paintWorkspaceChrome();
+          }
+        } else if (canPreview) {
+          await paintWorkspaceChrome();
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      "auto-color.selectTheme",
+      async () => {
+        if (!requireFolder()) {
+          return;
+        }
+        const current = getThemePreset();
+        const canPreview = shouldApplyChrome();
+        type ThemeItem = vscode.QuickPickItem & { theme: ThemePreset };
+        const items: ThemeItem[] = THEME_PRESET_CHOICES.map((choice) => ({
+          label: choice.label,
+          description: choice.description,
+          theme: choice.id,
+        }));
+
+        const picked = await pickWithLivePreview({
+          title: "Auto Color: Select theme",
+          placeholder: canPreview
+            ? "Browse to preview, Enter to keep, Esc to restore"
+            : "Pick a theme to save for this workspace",
+          items,
+          activeItem: items.find((item) => item.theme === current),
+          canPreview,
+          preview: (item) => paintWorkspaceChrome({ theme: item.theme }),
+        });
+
+        if (picked) {
+          await extensionSettings().update(
+            "theme",
+            picked.theme,
+            vscode.ConfigurationTarget.Workspace,
+          );
+          if (shouldApplyChrome()) {
+            await paintWorkspaceChrome();
+          }
+        } else if (canPreview) {
           await paintWorkspaceChrome();
         }
       },
@@ -326,6 +676,11 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         await extensionSettings().update(
           "randomSeed",
+          undefined,
+          vscode.ConfigurationTarget.Workspace,
+        );
+        await extensionSettings().update(
+          "theme",
           undefined,
           vscode.ConfigurationTarget.Workspace,
         );
