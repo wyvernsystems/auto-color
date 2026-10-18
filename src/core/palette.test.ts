@@ -427,3 +427,15 @@ describe("stripManagedColorCustomizations", () => {
     assert.deepEqual(next, { "editor.cursor": "#ff0000" });
   });
 });
+
+describe("hslToHex range", () => {
+  it("clamps out-of-range saturation and lightness to a valid hex color", () => {
+    for (const [h, s, l] of [
+      [210, 1.4, 0.05],
+      [30, 0.5, 1.2],
+      [300, -0.2, -0.1],
+    ]) {
+      assert.match(hslToHex(h, s, l), /^#[0-9a-f]{6}$/);
+    }
+  });
+});

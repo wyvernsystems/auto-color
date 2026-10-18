@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { THEME_PRESET_IDS } from "../core/themes";
 import { parseCliOptions } from "./options";
 
 describe("parseCliOptions", () => {
@@ -10,6 +11,7 @@ describe("parseCliOptions", () => {
       scope: "all",
       theme: "dark",
       seed: undefined,
+      color: undefined,
       targets: undefined,
       remove: false,
       dryRun: false,
@@ -40,6 +42,7 @@ describe("parseCliOptions", () => {
         scope: "headFooter",
         theme: "light",
         seed: 42,
+        color: undefined,
         targets: ["vscode", "zed"],
         remove: true,
         dryRun: true,
@@ -67,5 +70,30 @@ describe("parseCliOptions", () => {
     assert.throws(() => parseCliOptions(["--targets", "emacs"]), /--targets/);
     assert.throws(() => parseCliOptions(["--nope"]));
     assert.throws(() => parseCliOptions(["a", "b"]), /directory/);
+  });
+
+  it("accepts every theme preset id except auto", () => {
+    for (const id of THEME_PRESET_IDS.filter((t) => t !== "auto")) {
+      assert.equal(parseCliOptions(["--theme", id]).theme, id);
+    }
+  });
+
+  it("normalizes --color hex and names", () => {
+    assert.equal(parseCliOptions(["--color", "#ABC"]).color, "#aabbcc");
+    assert.equal(parseCliOptions(["--color", "#1E88E5"]).color, "#1e88e5");
+    assert.equal(parseCliOptions(["--color", "Blue"]).color, "#1e88e5");
+  });
+
+  it("rejects an invalid --color and lists the color names", () => {
+    assert.throws(() => parseCliOptions(["--color", "chartreuse"]), /--color.*red.*gray/);
+    assert.throws(() => parseCliOptions(["--color", "#12"]), /--color/);
+  });
+
+  it("rejects --color with --seed or a named preset, allows dark/light", () => {
+    assert.throws(() => parseCliOptions(["--color", "red", "--seed", "5"]), /--seed/);
+    assert.throws(() => parseCliOptions(["--color", "red", "--theme", "matrix"]), /--theme/);
+    const o = parseCliOptions(["--color", "red", "--theme", "light"]);
+    assert.equal(o.theme, "light");
+    assert.equal(o.color, "#e53935");
   });
 });

@@ -17,3 +17,11 @@ out/writers/**
 **/*.key
 .github/**
 .cursor/**
+dist/**
+cli-package/**
+scripts/**
+AGENTS.md
+CLAUDE.md
+.claude/**
+.opencode/**
+docs/**

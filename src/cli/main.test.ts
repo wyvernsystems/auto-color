@@ -8,7 +8,9 @@ import {
   buildColorCustomizationsFromPalette,
   hashWorkspaceIdentity,
 } from "../core/palette";
+import { computeColorPalette } from "../core/colors";
 import { computeThemePresetPalette } from "../core/themes";
+import { renderZedSettings } from "../writers/zed-settings";
 import { runCli } from "./main";
 
 const roots: string[] = [];
@@ -77,6 +79,47 @@ describe("runCli", () => {
         existing: {},
       }),
     );
+  });
+
+  it("paints the --color palette for vscode and zed", async () => {
+    const root = makeProject([".vscode", ".zed"]);
+    const code = await runCli(
+      [root, "--color", "blue", "--theme", "light"],
+      root,
+      silent(),
+      silent(),
+    );
+    assert.equal(code, 0);
+    const palette = computeColorPalette("#1e88e5", "light");
+    assert.deepEqual(
+      readJson(join(root, ".vscode", "settings.json"))[
+        "workbench.colorCustomizations"
+      ],
+      buildColorCustomizationsFromPalette({ palette, scope: "all", existing: {} }),
+    );
+    assert.equal(
+      readFileSync(join(root, ".zed", "settings.json"), "utf8"),
+      renderZedSettings({
+        existingText: undefined,
+        hash: 0,
+        scope: "all",
+        themeKind: "light",
+        palette,
+      }),
+    );
+  });
+
+  it("rejects --color combined with --seed", async () => {
+    const root = makeProject([".vscode"]);
+    const errors: string[] = [];
+    const code = await runCli(
+      [root, "--color", "#f00", "--seed", "3"],
+      root,
+      silent(),
+      (line) => errors.push(line),
+    );
+    assert.equal(code, 1);
+    assert.match(errors.join("\n"), /--color cannot be combined/);
   });
 
   it("writes nothing on a dry run", async () => {

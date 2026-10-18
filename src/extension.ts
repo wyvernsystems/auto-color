@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
 import {
   buildColorCustomizationsFromPalette,
-  computeWorkspacePalette,
   generateSeedCandidates,
   hashToPastelBase,
   hashWorkspaceIdentity,
@@ -17,11 +16,32 @@ import {
   type ColorMap,
 } from "./core/palette";
 import {
-  computeThemePresetPalette,
   parseThemePreset,
   THEME_PRESET_CHOICES,
   type ThemePreset,
 } from "./core/themes";
+import {
+  applyBranchAlert,
+  applyEnvironmentCast,
+  COMMON_COLORS,
+  DEFAULT_BRANCH_ALERT_COLOR,
+  DEFAULT_PROTECTED_BRANCHES,
+  environmentFromRemoteName,
+  matchesBranchPattern,
+  parseColor,
+  parseCustomThemes,
+  parseGitHead,
+  type CustomThemeSpec,
+} from "./core/colors";
+import {
+  computeChoicePalette,
+  describeColorChoice,
+  formatColorChoice,
+  parseColorChoice,
+  THEME_SETTING_COLOR,
+  THEME_SETTING_CUSTOM,
+  type ColorChoice,
+} from "./core/choice";
 import { isNonEmptyPlainObject } from "./core/settings-shape";
 import {
   AutomaticWriteGate,
@@ -76,6 +96,64 @@ function getThemePreset(): ThemePreset {
   return parseThemePreset(extensionSettings().get<string>("theme"));
 }
 
+const shownWarnings = new Set<string>();
+
+/** Shows a warning once per distinct message per session. */
+function warnOnce(message: string): void {
+  if (shownWarnings.has(message)) {
+    return;
+  }
+  shownWarnings.add(message);
+  void vscode.window.showWarningMessage(`Auto Color: ${message}`);
+}
+
+/** Custom themes from settings; invalid entries are reported once each. */
+function getCustomThemes(): Map<string, CustomThemeSpec> {
+  const { themes, errors } = parseCustomThemes(
+    extensionSettings().get<unknown>("customThemes"),
+  );
+  for (const error of errors) {
+    warnOnce(error);
+  }
+  return themes;
+}
+
+/** The workspace's own auto choice: a locked random seed, else the identity hash. */
+function autoChoice(): ColorChoice {
+  const seed = getRandomSeed();
+  return seed === undefined ? { kind: "auto" } : { kind: "seed", seed };
+}
+
+/** The choice the settings currently describe, falling back to auto with a warning. */
+function currentChoice(): ColorChoice {
+  const raw = extensionSettings().get<string>("theme");
+  if (raw === THEME_SETTING_COLOR) {
+    const hex = parseColor(extensionSettings().get<string>("color"));
+    if (hex) {
+      return { kind: "color", hex };
+    }
+    warnOnce(
+      'theme is "color" but auto-color.color is empty or not a valid hex color or color name. Using the automatic color.',
+    );
+    return autoChoice();
+  }
+  if (raw === THEME_SETTING_CUSTOM) {
+    const name = (extensionSettings().get<string>("customTheme") ?? "").trim();
+    const themes = getCustomThemes();
+    if (name && themes.has(name)) {
+      return { kind: "custom", name };
+    }
+    warnOnce(
+      name
+        ? `custom theme "${name}" is not defined in auto-color.customThemes. Using the automatic color.`
+        : 'theme is "custom" but auto-color.customTheme is not set. Using the automatic color.',
+    );
+    return autoChoice();
+  }
+  const preset = getThemePreset();
+  return preset === "auto" ? autoChoice() : { kind: "preset", preset };
+}
+
 function shouldApplyChrome(): boolean {
   return chromeEnabled(isGloballyEnabled(), isWorkspaceDisabled());
 }
@@ -118,6 +196,28 @@ async function readGitRemoteIdentity(
   return url ? normalizeGitRemoteUrl(url) : undefined;
 }
 
+/** Current branch of the folder's git repo, or undefined (no repo, worktree, detached HEAD). */
+async function readGitBranch(
+  folderUri: vscode.Uri,
+): Promise<string | undefined> {
+  const headUri = vscode.Uri.joinPath(folderUri, ".git", "HEAD");
+  let raw: Uint8Array;
+  try {
+    raw = await vscode.workspace.fs.readFile(headUri);
+  } catch (error) {
+    if (
+      isFileNotFoundError(error) ||
+      (error as { code?: unknown })?.code === "FileNotADirectory"
+    ) {
+      return undefined;
+    }
+    throw new Error("Unable to read the git HEAD for the branch alert", {
+      cause: error,
+    });
+  }
+  return parseGitHead(new TextDecoder("utf-8").decode(raw));
+}
+
 async function resolveIdentityHash(
   folder: vscode.WorkspaceFolder,
 ): Promise<number> {
@@ -135,28 +235,40 @@ async function resolveIdentityHash(
   return hashWorkspaceIdentity(fsPath);
 }
 
-async function paintWorkspaceChrome(override?: {
-  hash?: number;
-  theme?: ThemePreset;
-}): Promise<void> {
+async function paintWorkspaceChrome(override?: ColorChoice): Promise<void> {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders?.length) {
     return;
   }
 
   const scope = getChromeScope();
-  const theme = override?.theme ?? getThemePreset();
+  const choice = override ?? currentChoice();
   const themeKind = themeKindFromVsCode(vscode.window.activeColorTheme.kind);
 
-  let palette;
-  if (theme === "auto") {
-    const hash =
-      override?.hash ??
-      getRandomSeed() ??
-      (await resolveIdentityHash(folders[0]));
-    palette = computeWorkspacePalette(hash, themeKind);
-  } else {
-    palette = computeThemePresetPalette(theme, themeKind);
+  let palette = computeChoicePalette(choice, {
+    hash: choice.kind === "auto" ? await resolveIdentityHash(folders[0]) : 0,
+    themeKind,
+    customThemes: getCustomThemes(),
+  });
+
+  const settings = extensionSettings();
+  const environment = environmentFromRemoteName(vscode.env.remoteName);
+  if (environment && settings.get<boolean>("environmentColors", true)) {
+    palette = applyEnvironmentCast(palette, environment);
+  }
+  if (settings.get<boolean>("branchAlert", false)) {
+    const branch = await readGitBranch(folders[0].uri);
+    const protectedBranches = settings.get<string[]>(
+      "protectedBranches",
+      DEFAULT_PROTECTED_BRANCHES,
+    );
+    if (branch && matchesBranchPattern(branch, protectedBranches)) {
+      palette = applyBranchAlert(
+        palette,
+        parseColor(settings.get<string>("branchAlertColor")) ??
+          DEFAULT_BRANCH_ALERT_COLOR,
+      );
+    }
   }
 
   const workbench = vscode.workspace.getConfiguration("workbench");
@@ -318,6 +430,91 @@ function requireFolder(): boolean {
 }
 
 /**
+ * Saves a choice to the workspace settings, then repaints when Auto Color is
+ * active. Commands use this so every picker stores choices the same way.
+ */
+async function applyChoiceToWorkspace(choice: ColorChoice): Promise<void> {
+  const settings = extensionSettings();
+  const target = vscode.ConfigurationTarget.Workspace;
+  switch (choice.kind) {
+    case "auto":
+      await settings.update("theme", "auto", target);
+      await settings.update("randomSeed", undefined, target);
+      break;
+    case "seed":
+      await settings.update("theme", "auto", target);
+      await settings.update("randomSeed", choice.seed, target);
+      break;
+    case "preset":
+      await settings.update("theme", choice.preset, target);
+      break;
+    case "color":
+      await settings.update("theme", THEME_SETTING_COLOR, target);
+      await settings.update("color", choice.hex, target);
+      break;
+    case "custom":
+      await settings.update("theme", THEME_SETTING_CUSTOM, target);
+      await settings.update("customTheme", choice.name, target);
+      break;
+  }
+  if (shouldApplyChrome()) {
+    await paintWorkspaceChrome();
+  }
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Quick pick of common colors with live preview; applies the choice. */
+async function pickColorCommand(): Promise<void> {
+  if (!requireFolder()) {
+    return;
+  }
+  const canPreview = shouldApplyChrome();
+  type ColorItem = vscode.QuickPickItem & { hex?: string };
+  const items: ColorItem[] = [
+    ...Object.entries(COMMON_COLORS).map(([name, hex]) => ({
+      label: capitalize(name),
+      description: hex,
+      hex,
+    })),
+    { label: "Custom hex…", description: "Enter #rgb or #rrggbb" },
+  ];
+
+  const picked = await pickWithLivePreview({
+    title: "Auto Color: Pick a color",
+    placeholder: canPreview
+      ? "Browse to preview, Enter to keep, Esc to restore"
+      : "Pick a color to save for this workspace",
+    items,
+    canPreview,
+    preview: async (item) => {
+      if (item.hex) {
+        await paintWorkspaceChrome({ kind: "color", hex: item.hex });
+      }
+    },
+  });
+
+  let hex = picked?.hex;
+  if (picked && !hex) {
+    const input = await vscode.window.showInputBox({
+      title: "Auto Color: Custom hex color",
+      prompt: "Enter a hex color such as #1e88e5, or a color name such as blue",
+      validateInput: (value) =>
+        parseColor(value) ? undefined : "Enter #rgb, #rrggbb, or a color name",
+    });
+    hex = parseColor(input);
+  }
+
+  if (hex) {
+    await applyChoiceToWorkspace({ kind: "color", hex });
+  } else if (canPreview) {
+    await paintWorkspaceChrome();
+  }
+}
+
+/**
  * Quick pick whose highlighted item repaints the workspace as a preview.
  * Previews are queued in order so the last highlighted choice is the one
  * left on screen; resolves once the pick closes and all previews settle.
@@ -464,7 +661,32 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
+  let headWatcher: vscode.FileSystemWatcher | undefined;
+
+  const onGitHeadEvent = () => {
+    if (!extensionSettings().get<boolean>("branchAlert", false)) {
+      return;
+    }
+    runInBackground("update the branch alert", runAutomaticSyncIfAllowed);
+  };
+
+  const rebuildHeadWatcher = () => {
+    headWatcher?.dispose();
+    headWatcher = undefined;
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!folder) {
+      return;
+    }
+    headWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folder, ".git/HEAD"),
+    );
+    headWatcher.onDidCreate(onGitHeadEvent);
+    headWatcher.onDidChange(onGitHeadEvent);
+    headWatcher.onDidDelete(onGitHeadEvent);
+  };
+
   rebuildSettingsWatchers();
+  rebuildHeadWatcher();
 
   runInBackground("initialize workspace colors", async () => {
     // Colors applied before the painted flag existed (or by the CLI) count as
@@ -484,9 +706,11 @@ export function activate(context: vscode.ExtensionContext): void {
       for (const watcher of settingsWatchers) {
         watcher.dispose();
       }
+      headWatcher?.dispose();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       rebuildSettingsWatchers();
+      rebuildHeadWatcher();
       runInBackground("refresh workspace colors", async () => {
         await refreshAllowAutomaticWorkspaceChrome();
         await runAutomaticSyncIfAllowed();
@@ -514,6 +738,17 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration(CONFIG_SECTION)) {
+        return;
+      }
+      // Favorites are a saved list only; they never change the painted colors.
+      if (
+        e.affectsConfiguration(`${CONFIG_SECTION}.favorites`) &&
+        ![
+          "enabled", "scope", "workspaceDisabled", "identitySource", "theme",
+          "randomSeed", "color", "customThemes", "customTheme", "branchAlert",
+          "protectedBranches", "branchAlertColor", "environmentColors",
+        ].some((key) => e.affectsConfiguration(`${CONFIG_SECTION}.${key}`))
+      ) {
         return;
       }
       runInBackground("update workspace colors", runAutomaticSyncIfAllowed);
@@ -604,25 +839,11 @@ export function activate(context: vscode.ExtensionContext): void {
           canPreview,
           // Preview as auto so the seed shows through a selected theme.
           preview: (item) =>
-            paintWorkspaceChrome({ hash: item.seed, theme: "auto" }),
+            paintWorkspaceChrome({ kind: "seed", seed: item.seed }),
         });
 
         if (picked) {
-          if (getThemePreset() !== "auto") {
-            await extensionSettings().update(
-              "theme",
-              "auto",
-              vscode.ConfigurationTarget.Workspace,
-            );
-          }
-          await extensionSettings().update(
-            "randomSeed",
-            picked.seed,
-            vscode.ConfigurationTarget.Workspace,
-          );
-          if (shouldApplyChrome()) {
-            await paintWorkspaceChrome();
-          }
+          await applyChoiceToWorkspace({ kind: "seed", seed: picked.seed });
         } else if (canPreview) {
           await paintWorkspaceChrome();
         }
@@ -634,14 +855,28 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!requireFolder()) {
           return;
         }
-        const current = getThemePreset();
+        const current = formatColorChoice(currentChoice());
         const canPreview = shouldApplyChrome();
-        type ThemeItem = vscode.QuickPickItem & { theme: ThemePreset };
-        const items: ThemeItem[] = THEME_PRESET_CHOICES.map((choice) => ({
-          label: choice.label,
-          description: choice.description,
-          theme: choice.id,
-        }));
+        type ThemeItem = vscode.QuickPickItem & { choice?: ColorChoice };
+        const items: ThemeItem[] = [
+          ...THEME_PRESET_CHOICES.map((choice) => ({
+            label: choice.label,
+            description: choice.description,
+            choice:
+              choice.id === "auto"
+                ? autoChoice()
+                : ({ kind: "preset", preset: choice.id } as ColorChoice),
+          })),
+          ...[...getCustomThemes().keys()].map((name) => ({
+            label: `Custom: ${name}`,
+            description: "From auto-color.customThemes",
+            choice: { kind: "custom", name } as ColorChoice,
+          })),
+          {
+            label: "Pick a color…",
+            description: "Choose a single color for every bar",
+          },
+        ];
 
         const picked = await pickWithLivePreview({
           title: "Auto Color: Select theme",
@@ -649,23 +884,113 @@ export function activate(context: vscode.ExtensionContext): void {
             ? "Browse to preview, Enter to keep, Esc to restore"
             : "Pick a theme to save for this workspace",
           items,
-          activeItem: items.find((item) => item.theme === current),
+          activeItem: items.find(
+            (item) => item.choice && formatColorChoice(item.choice) === current,
+          ),
           canPreview,
-          preview: (item) => paintWorkspaceChrome({ theme: item.theme }),
+          preview: async (item) => {
+            if (item.choice) {
+              await paintWorkspaceChrome(item.choice);
+            }
+          },
         });
 
-        if (picked) {
-          await extensionSettings().update(
-            "theme",
-            picked.theme,
-            vscode.ConfigurationTarget.Workspace,
-          );
-          if (shouldApplyChrome()) {
+        if (picked?.choice) {
+          await applyChoiceToWorkspace(picked.choice);
+        } else if (picked) {
+          if (canPreview) {
             await paintWorkspaceChrome();
           }
+          await vscode.commands.executeCommand("auto-color.pickColor");
         } else if (canPreview) {
           await paintWorkspaceChrome();
         }
+      },
+    ),
+    vscode.commands.registerCommand("auto-color.pickColor", pickColorCommand),
+    vscode.commands.registerCommand(
+      "auto-color.addFavorite",
+      async () => {
+        const choice = currentChoice();
+        const value = formatColorChoice(choice);
+        const favorites = extensionSettings().get<string[]>("favorites", []);
+        if (favorites.includes(value)) {
+          void vscode.window.showInformationMessage(
+            `Auto Color: ${describeColorChoice(choice)} is already a favorite.`,
+          );
+          return;
+        }
+        await extensionSettings().update(
+          "favorites",
+          [...favorites, value],
+          vscode.ConfigurationTarget.Global,
+        );
+        void vscode.window.showInformationMessage(
+          `Auto Color: added ${describeColorChoice(choice)} to favorites.`,
+        );
+      },
+    ),
+    vscode.commands.registerCommand(
+      "auto-color.nextFavorite",
+      async () => {
+        if (!requireFolder()) {
+          return;
+        }
+        const favorites = extensionSettings().get<string[]>("favorites", []);
+        if (favorites.length === 0) {
+          void vscode.window.showInformationMessage(
+            "Auto Color: no favorites yet. Run Auto Color: Add current colors to favorites to save the current colors.",
+          );
+          return;
+        }
+        const current = formatColorChoice(currentChoice());
+        const currentIndex = favorites.findIndex((entry) => {
+          const parsed = parseColorChoice(entry);
+          return parsed !== undefined && formatColorChoice(parsed) === current;
+        });
+        for (let step = 1; step <= favorites.length; step += 1) {
+          const entry = favorites[(currentIndex + step) % favorites.length];
+          const choice = parseColorChoice(entry);
+          if (!choice) {
+            warnOnce(`skipping invalid favorite "${entry}".`);
+            continue;
+          }
+          await applyChoiceToWorkspace(choice);
+          return;
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      "auto-color.removeFavorite",
+      async () => {
+        const favorites = extensionSettings().get<string[]>("favorites", []);
+        if (favorites.length === 0) {
+          void vscode.window.showInformationMessage(
+            "Auto Color: no favorites to remove.",
+          );
+          return;
+        }
+        type FavoriteItem = vscode.QuickPickItem & { index: number };
+        const items: FavoriteItem[] = favorites.map((entry, index) => {
+          const choice = parseColorChoice(entry);
+          return {
+            label: choice ? describeColorChoice(choice) : entry,
+            description: choice ? entry : "Invalid entry",
+            index,
+          };
+        });
+        const picked = await vscode.window.showQuickPick(items, {
+          title: "Auto Color: Remove a favorite",
+          placeHolder: "Choose a favorite to remove",
+        });
+        if (!picked) {
+          return;
+        }
+        await extensionSettings().update(
+          "favorites",
+          favorites.filter((_, index) => index !== picked.index),
+          vscode.ConfigurationTarget.Global,
+        );
       },
     ),
     vscode.commands.registerCommand(
@@ -679,11 +1004,13 @@ export function activate(context: vscode.ExtensionContext): void {
           undefined,
           vscode.ConfigurationTarget.Workspace,
         );
-        await extensionSettings().update(
-          "theme",
-          undefined,
-          vscode.ConfigurationTarget.Workspace,
-        );
+        for (const key of ["theme", "color", "customTheme"]) {
+          await extensionSettings().update(
+            key,
+            undefined,
+            vscode.ConfigurationTarget.Workspace,
+          );
+        }
         if (shouldApplyChrome()) {
           await paintWorkspaceChrome();
         }

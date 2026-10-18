@@ -43,3 +43,18 @@ npx ovsx publish auto-color-X.Y.Z.vsix -p <token>
 ```
 
 The two registries are independent: publish the same VSIX to both so versions stay in sync.
+
+## Publish the CLI to npm
+
+The CLI ships as `auto-color-cli` (the unscoped name `auto-color` is taken). Keep its version in sync with the extension; the build copies it from `package.json`.
+
+```bash
+npm run package:cli
+cd dist/cli-package && npm pack --dry-run
+```
+
+Check the file list, then publish (requires `npm login`; the first publish claims the unscoped name `auto-color-cli`):
+
+```bash
+npm publish dist/cli-package
+```

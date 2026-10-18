@@ -4,6 +4,7 @@ import {
   type ChromeScope,
   type ThemeKind,
 } from "../core/palette";
+import { COMMON_COLORS, parseColor } from "../core/colors";
 import { THEME_PRESET_IDS, type NamedThemePreset } from "../core/themes";
 import { type IdentitySource } from "../core/workspace-identity";
 
@@ -28,6 +29,8 @@ export type CliOptions = {
   scope: ChromeScope;
   theme: CliTheme;
   seed: number | undefined;
+  /** Normalized `#rrggbb` from `--color`, painted through the core palette. */
+  color: string | undefined;
   targets: CliTarget[] | undefined;
   remove: boolean;
   dryRun: boolean;
@@ -59,6 +62,7 @@ export function parseCliOptions(argv: string[]): CliOptions {
       scope: { type: "string" },
       theme: { type: "string" },
       seed: { type: "string" },
+      color: { type: "string" },
       targets: { type: "string" },
       remove: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
@@ -75,6 +79,28 @@ export function parseCliOptions(argv: string[]): CliOptions {
     seed = parseRandomSeed(Number(values.seed));
     if (seed === undefined) {
       throw new Error("--seed must be a whole number from 1 to 4294967295");
+    }
+  }
+
+  let color: string | undefined;
+  if (values.color !== undefined) {
+    color = parseColor(values.color);
+    if (color === undefined) {
+      throw new Error(
+        `--color must be #rgb, #rrggbb, or one of: ${Object.keys(COMMON_COLORS).join(", ")}`,
+      );
+    }
+    if (values.seed !== undefined) {
+      throw new Error("--color cannot be combined with --seed");
+    }
+    if (
+      values.theme !== undefined &&
+      values.theme !== "dark" &&
+      values.theme !== "light"
+    ) {
+      throw new Error(
+        "--color cannot be combined with a named --theme preset (use --theme dark or light)",
+      );
     }
   }
 
@@ -99,6 +125,7 @@ export function parseCliOptions(argv: string[]): CliOptions {
     scope: oneOf("--scope", values.scope, ["all", "headFooter"] as const, "all"),
     theme: oneOf("--theme", values.theme, CLI_THEMES, "dark"),
     seed,
+    color,
     targets,
     remove: values.remove,
     dryRun: values["dry-run"],

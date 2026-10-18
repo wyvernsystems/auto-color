@@ -4,6 +4,7 @@ import {
   type ChromeScope,
   type ColorMap,
   type ThemeKind,
+  type WorkspacePalette,
 } from "../core/palette";
 import {
   computePaletteWithPreset,
@@ -29,9 +30,11 @@ export function renderVsCodeSettings(opts: {
   scope: ChromeScope;
   themeKind: ThemeKind;
   preset?: NamedThemePreset;
+  /** Explicit palette (e.g. from `--color`); wins over `preset` and `hash`. */
+  palette?: WorkspacePalette;
   remove?: boolean;
 }): string {
-  const { existingText, hash, scope, themeKind, preset, remove = false } = opts;
+  const { existingText, hash, scope, themeKind, preset, palette, remove = false } = opts;
   const settings = parseSettingsObject(existingText, VSCODE_SETTINGS_PATH);
   const existing = sectionObject(
     settings,
@@ -42,7 +45,7 @@ export function renderVsCodeSettings(opts: {
   const next = remove
     ? stripManagedColorCustomizations(existing)
     : buildColorCustomizationsFromPalette({
-        palette: computePaletteWithPreset({ hash, themeKind, preset }),
+        palette: palette ?? computePaletteWithPreset({ hash, themeKind, preset }),
         scope,
         existing,
       });

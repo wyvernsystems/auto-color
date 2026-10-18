@@ -1,6 +1,11 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { hashWorkspaceIdentity, type ThemeKind } from "../core/palette";
+import { computeColorPalette } from "../core/colors";
+import {
+  hashWorkspaceIdentity,
+  type ThemeKind,
+  type WorkspacePalette,
+} from "../core/palette";
 import { type NamedThemePreset } from "../core/themes";
 import {
   folderNameFromPath,
@@ -14,10 +19,27 @@ import {
 import { renderZedSettings, ZED_SETTINGS_PATH } from "../writers/zed-settings";
 import {
   CLI_TARGETS,
+  CLI_THEMES,
   parseCliOptions,
   type CliOptions,
   type CliTarget,
 } from "./options";
+
+function presetList(): string {
+  const lines: string[] = [];
+  let line = "";
+  for (const name of CLI_THEMES.filter((t) => t !== "dark" && t !== "light")) {
+    const next = line ? `${line}, ${name}` : name;
+    if (next.length > 44) {
+      lines.push(line + ",");
+      line = name;
+    } else {
+      line = next;
+    }
+  }
+  lines.push(line);
+  return lines.map((l) => `                           ${l}`).join("\n");
+}
 
 export const USAGE = `Usage: auto-color [directory] [options]
 
@@ -32,12 +54,16 @@ Options:
   --theme dark|light|<name>
                            Tint surfaces for a dark or light editor theme, or
                            paint a named theme palette instead of the derived
-                           color: matrix, githubDark, githubLight, dracula,
-                           nord, solarizedDark, solarizedLight, monokai,
-                           gruvboxDark, oneDark, synthwave, ocean, sunset,
-                           rainbow (presets pick their own light/dark
-                           surfaces; rainbow uses dark surfaces in the CLI)
+                           color:
+${presetList()}
+                           (presets pick their own light/dark surfaces;
+                           rainbow uses dark surfaces in the CLI)
   --seed N                 Use a fixed palette seed instead of the identity
+  --color <hex|name>       Paint a palette built around one color: #rgb,
+                           #rrggbb, or red, orange, yellow, green, teal,
+                           cyan, blue, indigo, purple, pink, brown, gray.
+                           Combine with --theme dark|light; cannot be used
+                           with --seed or a named --theme preset
   --remove                 Remove Auto Color's keys instead of writing them
   --dry-run                Report what would be written without writing
   -h, --help               Show this help`;
@@ -50,6 +76,7 @@ type RenderSettings = (opts: {
   scope: CliOptions["scope"];
   themeKind: ThemeKind;
   preset?: NamedThemePreset;
+  palette?: WorkspacePalette;
   remove?: boolean;
 }) => string;
 
@@ -167,6 +194,10 @@ export async function runCli(
     preset = options.theme;
   }
 
+  const palette = options.color
+    ? computeColorPalette(options.color, themeKind)
+    : undefined;
+
   let failed = false;
   for (const target of targets) {
     const { settingsPath, render } = TARGETS[target];
@@ -183,6 +214,7 @@ export async function runCli(
         scope: options.scope,
         themeKind,
         preset,
+        palette,
         remove: options.remove,
       });
       if (nextText === existingText) {

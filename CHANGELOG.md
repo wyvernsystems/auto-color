@@ -2,6 +2,30 @@
 
 All notable changes to **Auto Color** will be documented in this file.
 
+## [2.1.0] - 2026-10-18
+
+### Added
+
+- **19 new themes** in **Select theme**: Catppuccin Latte, Catppuccin Mocha, Tokyo Night, Rosé Pine, Kanagawa, Everforest, Ayu Dark, Night Owl, Vaporwave, Cyberpunk, Retro Amber, Sakura, Deep Ocean, Coffee, Halloween, Holiday, Trans Pride, Bi Pride, and Pan Pride. The community palettes are approximations of independent open-source color schemes.
+- **Auto Color: Pick a color:** choose a common color (red, orange, yellow, green, teal, cyan, blue, indigo, purple, pink, brown, gray) with live preview, or a custom hex; the full palette is built around it. Also available as `auto-color.theme: "color"` with `auto-color.color`.
+- **Custom themes:** define palettes in `auto-color.customThemes` (`title`, `activity`, `status`, `surface`, `foreground`, `kind`; hex or color names), share them through the repo's `.vscode/settings.json`, and select them with **Select theme** or `auto-color.theme: "custom"` with `auto-color.customTheme`. Invalid entries are skipped with a warning.
+- **Favorites:** **Add current colors to favorites**, **Next favorite**, and **Remove a favorite**, stored in the user setting `auto-color.favorites`.
+- **Branch alert** (opt-in, `auto-color.branchAlert`): bars turn `auto-color.branchAlertColor` (default `#c62828`) while a branch matching `auto-color.protectedBranches` is checked out, switching live on checkout. It rewrites `.vscode/settings.json` when you move to or from a protected branch, and linked worktrees are not detected.
+- **Environment colors** (`auto-color.environmentColors`, default on): the status bar takes a color for Remote SSH, Dev Container, WSL, Codespaces, Remote Tunnel, and other remotes. Title and activity keep the project color; branch alert wins.
+- **CLI:** new `--color <hex|name>` option. The CLI is now publishable to npm as `auto-color-cli` (`npx auto-color-cli`, or `npm i -g auto-color-cli` for the `auto-color` command).
+
+### Changed
+
+- Every bar's text now meets WCAG AA contrast (4.5:1) automatically, and theme foregrounds that would be unreadable fall back to black or white text. Some palettes (Ocean, Sunset, Rainbow, and some auto pastel colors) now get darker or lighter bar text than before.
+- - The marketplace listing is renamed **Auto Color: Workspace & Window Colors**, with a description and keywords for workspace, window, title bar, and status bar colors, so searches in Cursor, Open VSX, and the VS Code Marketplace find it. The extension ID `WyvernSystemsLLC.auto-color` is unchanged, so existing installs update normally.
+
+### Fixed
+
+- The extension package no longer ships agent instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.opencode/`) or the release docs.
+- Very saturated or very dark derived colors could produce an invalid hex color.
+
+[2.1.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.1.0
+
 ## [2.0.0] - 2026-08-30
 
 ### Added

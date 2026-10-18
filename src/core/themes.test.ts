@@ -102,3 +102,87 @@ describe("computeThemePresetPalette", () => {
     assert.equal(palette.titleFg, "#1e1e1e");
   });
 });
+
+const NEW_PRESETS: Record<string, string> = {
+  catppuccinLatte: "Catppuccin Latte",
+  catppuccinMocha: "Catppuccin Mocha",
+  tokyoNight: "Tokyo Night",
+  rosePine: "Rosé Pine",
+  kanagawa: "Kanagawa",
+  everforest: "Everforest",
+  ayuDark: "Ayu Dark",
+  nightOwl: "Night Owl",
+  vaporwave: "Vaporwave",
+  cyberpunk: "Cyberpunk",
+  retroAmber: "Retro Amber",
+  sakura: "Sakura",
+  deepOcean: "Deep Ocean",
+  coffee: "Coffee",
+  halloween: "Halloween",
+  holiday: "Holiday",
+  transPride: "Trans Pride",
+  biPride: "Bi Pride",
+  panPride: "Pan Pride",
+};
+
+function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+describe("community, novelty, seasonal, and pride presets", () => {
+  it("lists each new preset with its label when choices are built", () => {
+    for (const [id, label] of Object.entries(NEW_PRESETS)) {
+      assert.ok((THEME_PRESET_IDS as readonly string[]).includes(id), id);
+      const choice = THEME_PRESET_CHOICES.find((c) => c.id === id);
+      assert.equal(choice?.label, label, id);
+    }
+  });
+
+  it("keeps bar text at WCAG 4.5:1 or better when a new preset renders in either theme", () => {
+    for (const id of Object.keys(NEW_PRESETS)) {
+      for (const kind of ["dark", "light"] as const) {
+        const p = computeThemePresetPalette(id as NamedThemePreset, kind);
+        for (const [bg, fg] of [
+          [p.titleBg, p.titleFg],
+          [p.activityBg, p.activityFg],
+          [p.statusBg, p.statusFg],
+        ]) {
+          const ratio = contrastRatio(bg, fg);
+          assert.ok(ratio >= 4.5, `${id}/${kind} ${fg} on ${bg} = ${ratio.toFixed(2)}`);
+        }
+      }
+    }
+  });
+});
+
+describe("existing presets bar contrast", () => {
+  it("keeps every existing preset's bar text at WCAG AA contrast", () => {
+    const existing = NAMED_PRESETS.filter((id) => !(id in NEW_PRESETS));
+    for (const id of existing) {
+      for (const kind of ["dark", "light"] as const) {
+        const p = computeThemePresetPalette(id, kind);
+        for (const [bg, fg] of [
+          [p.titleBg, p.titleFg],
+          [p.activityBg, p.activityFg],
+          [p.statusBg, p.statusFg],
+        ]) {
+          const ratio = contrastRatio(bg, fg);
+          assert.ok(ratio >= 4.5, `${id}/${kind}: ${fg} on ${bg} is ${ratio.toFixed(2)}`);
+        }
+      }
+    }
+  });
+});
+
+describe("auto-color.theme setting", () => {
+  it("offers every preset plus color and custom, in order", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const manifest = JSON.parse(await readFile(join(__dirname, "..", "..", "package.json"), "utf8"));
+    const setting = manifest.contributes.configuration.properties["auto-color.theme"];
+    assert.deepEqual(setting.enum, [...THEME_PRESET_IDS, "color", "custom"]);
+    assert.equal(setting.enumItemLabels.length, setting.enum.length);
+  });
+});

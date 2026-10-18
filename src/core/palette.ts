@@ -182,7 +182,13 @@ export function hashToPastelBase(hash: number): { h: number; s: number; l: numbe
   return { h: hue, s, l };
 }
 
+/**
+ * HSL to `#rrggbb`. Saturation and lightness are clamped to 0..1 first, since
+ * derived surfaces scale them and can step past the valid range.
+ */
 export function hslToHex(h: number, s: number, l: number): string {
+  s = Math.min(1, Math.max(0, s));
+  l = Math.min(1, Math.max(0, l));
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => {
     const k = (n + h / 30) % 12;
@@ -211,9 +217,33 @@ export function relativeLuminance(hex: string): number {
   return 0.2126 * R + 0.7152 * G + 0.0722 * B;
 }
 
+/** WCAG 2 contrast ratio between two `#rrggbb` colors, from 1 to 21. */
+export function contrastRatio(aHex: string, bHex: string): number {
+  const a = relativeLuminance(aHex);
+  const b = relativeLuminance(bHex);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/** WCAG AA contrast for normal text, required of every bar foreground. */
+export const MIN_BAR_CONTRAST = 4.5;
+
+/**
+ * Soft near-black or near-white text, whichever contrasts more with the
+ * background. Mid-tone backgrounds where neither soft color reaches
+ * `MIN_BAR_CONTRAST` get pure black or white instead.
+ */
 export function contrastingForegroundHex(bgHex: string): string {
-  const lum = relativeLuminance(bgHex);
-  return lum > 0.45 ? "#1e1e1e" : "#f3f3f3";
+  const pick = (dark: string, light: string) =>
+    contrastRatio(bgHex, dark) >= contrastRatio(bgHex, light) ? dark : light;
+  const soft = pick("#1e1e1e", "#f3f3f3");
+  return contrastRatio(bgHex, soft) >= MIN_BAR_CONTRAST ? soft : pick("#000000", "#ffffff");
+}
+
+/** `preferred` when it is readable on `bgHex`, otherwise a contrast-derived color. */
+export function readableForegroundHex(bgHex: string, preferred?: string): string {
+  return preferred !== undefined && contrastRatio(bgHex, preferred) >= MIN_BAR_CONTRAST
+    ? preferred
+    : contrastingForegroundHex(bgHex);
 }
 
 export function clampLightness(l: number): number {
@@ -256,7 +286,8 @@ export type WorkspacePalette = {
 
 /**
  * Composes a full palette from per-bar chrome colors and a surface tint.
- * Bar foregrounds are contrast-derived unless `barFg` overrides them.
+ * Bar foregrounds are contrast-derived unless `barFg` overrides them; an
+ * override that is not readable on a bar falls back to the derived color.
  */
 export function composeWorkspacePalette(opts: {
   bars: { title: Hsl; activity: Hsl; status: Hsl };
@@ -282,11 +313,11 @@ export function composeWorkspacePalette(opts: {
 
   return {
     titleBg,
-    titleFg: barFg ?? contrastingForegroundHex(titleBg),
+    titleFg: readableForegroundHex(titleBg, barFg),
     activityBg,
-    activityFg: barFg ?? contrastingForegroundHex(activityBg),
+    activityFg: readableForegroundHex(activityBg, barFg),
     statusBg,
-    statusFg: barFg ?? contrastingForegroundHex(statusBg),
+    statusFg: readableForegroundHex(statusBg, barFg),
     editorBg,
     editorHighlightBg: surf(0.7, 0.008),
     sidebarBg: surf(1.0, 0.027),

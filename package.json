@@ -1,8 +1,8 @@
 {
   "name": "auto-color",
-  "displayName": "Auto Color",
-  "description": "Workspace-tinted UI: pastel title, activity, and status bars plus a subtle hue across the workbench—golden-ratio palettes, native-style depth, zero setup. Or pick a named theme: Matrix, GitHub Dark/Light, Dracula, Nord, Solarized, Rainbow, and more.",
-  "version": "2.0.0",
+  "displayName": "Auto Color: Workspace & Window Colors",
+  "description": "Color-code every workspace window automatically: tinted title bar, activity bar, and status bar per project so you can tell VS Code and Cursor windows apart at a glance. Zero setup, light and dark aware, or pick a named theme: Matrix, GitHub, Dracula, Nord, Solarized, Monokai, Gruvbox, and more.",
+  "version": "2.1.0",
   "license": "MIT",
   "publisher": "WyvernSystemsLLC",
   "repository": {
@@ -21,20 +21,36 @@
     "Themes"
   ],
   "keywords": [
+    "workspace color",
+    "window color",
+    "title bar color",
+    "status bar color",
+    "activity bar color",
+    "color code",
+    "color coding",
+    "project color",
+    "multiple windows",
+    "multi-root",
+    "titlebar",
+    "title bar",
+    "status bar",
+    "workbench",
+    "colorCustomizations",
+    "tint",
+    "pastel",
     "theme",
     "color",
-    "workspace",
-    "title bar",
-    "activity bar",
-    "status bar",
-    "pastel",
-    "multi-root",
-    "matrix",
+    "colors",
+    "auto color",
+    "cursor",
+    "vscode",
     "dracula",
     "nord",
     "solarized",
-    "rainbow",
-    "AutoColorWorkspace"
+    "matrix",
+    "gruvbox",
+    "monokai",
+    "rainbow"
   ],
   "galleryBanner": {
     "color": "#2a2340",
@@ -76,6 +92,22 @@
       {
         "command": "auto-color.resetColor",
         "title": "Auto Color: Reset to default color"
+      },
+      {
+        "command": "auto-color.pickColor",
+        "title": "Auto Color: Pick a color"
+      },
+      {
+        "command": "auto-color.addFavorite",
+        "title": "Auto Color: Add current colors to favorites"
+      },
+      {
+        "command": "auto-color.nextFavorite",
+        "title": "Auto Color: Next favorite"
+      },
+      {
+        "command": "auto-color.removeFavorite",
+        "title": "Auto Color: Remove a favorite"
       }
     ],
     "configuration": {
@@ -91,7 +123,10 @@
         },
         "auto-color.scope": {
           "type": "string",
-          "enum": ["all", "headFooter"],
+          "enum": [
+            "all",
+            "headFooter"
+          ],
           "enumDescriptions": [
             "Title, activity, and status bars plus the tinted editor, sidebar, tabs, panel, and related UI.",
             "Only the title and status bars. Activity bar and the rest of the workbench follow your color theme."
@@ -112,7 +147,11 @@
         },
         "auto-color.identitySource": {
           "type": "string",
-          "enum": ["path", "folderName", "gitRemote"],
+          "enum": [
+            "path",
+            "folderName",
+            "gitRemote"
+          ],
           "enumDescriptions": [
             "Hash the full folder path. Same folder, same color on this machine; clones at other paths differ.",
             "Hash only the folder name. The same folder name gets the same color on every machine.",
@@ -141,7 +180,28 @@
             "synthwave",
             "ocean",
             "sunset",
-            "rainbow"
+            "rainbow",
+            "catppuccinLatte",
+            "catppuccinMocha",
+            "tokyoNight",
+            "rosePine",
+            "kanagawa",
+            "everforest",
+            "ayuDark",
+            "nightOwl",
+            "vaporwave",
+            "cyberpunk",
+            "retroAmber",
+            "sakura",
+            "deepOcean",
+            "coffee",
+            "halloween",
+            "holiday",
+            "transPride",
+            "biPride",
+            "panPride",
+            "color",
+            "custom"
           ],
           "enumItemLabels": [
             "Auto",
@@ -158,29 +218,71 @@
             "Synthwave",
             "Ocean",
             "Sunset",
-            "Rainbow"
+            "Rainbow",
+            "Catppuccin Latte",
+            "Catppuccin Mocha",
+            "Tokyo Night",
+            "Rosé Pine",
+            "Kanagawa",
+            "Everforest",
+            "Ayu Dark",
+            "Night Owl",
+            "Vaporwave",
+            "Cyberpunk",
+            "Retro Amber",
+            "Sakura",
+            "Deep Ocean",
+            "Coffee",
+            "Halloween",
+            "Holiday",
+            "Trans Pride",
+            "Bi Pride",
+            "Pan Pride",
+            "Custom color",
+            "Custom theme"
           ],
           "enumDescriptions": [
-            "Derive the palette from this workspace (default).",
-            "Phosphor green on near-black.",
-            "Slate blue-gray, GitHub's dark look.",
-            "Clean white with cool gray chrome.",
-            "Muted purple on a dark slate.",
-            "Arctic frost blues.",
-            "Deep teal, Solarized's dark base.",
-            "Warm parchment, Solarized's light base.",
-            "Olive-tinted charcoal.",
-            "Retro warm browns and orange.",
-            "Atom's cool gray-blue.",
-            "Neon pink on deep purple.",
-            "Deep sea blues and teals.",
-            "Rose, orange, and gold bars.",
-            "A different hue per bar; follows your light/dark theme."
+            "Derive the palette from this workspace (default)",
+            "Phosphor green on near-black",
+            "Slate blue-gray, GitHub's dark look",
+            "Clean white with cool gray chrome",
+            "Muted purple on a dark slate",
+            "Arctic frost blues",
+            "Deep teal, Solarized's dark base",
+            "Warm parchment, Solarized's light base",
+            "Olive-tinted charcoal",
+            "Retro warm browns and orange",
+            "Atom's cool gray-blue",
+            "Neon pink on deep purple",
+            "Deep sea blues and teals",
+            "Rose, orange, and gold bars",
+            "A different hue per bar; follows your light/dark theme",
+            "Creamy lavender light with soft mauve chrome",
+            "Cozy mauve on warm midnight",
+            "Neon-lit indigo after dark",
+            "Dusky rose and pine on deep plum",
+            "Ukiyo-e indigo ink with sumi gray",
+            "Mossy forest greens, easy on the eyes",
+            "Ink-black with a warm orange glow",
+            "Deep midnight blue for late-night coding",
+            "Pastel pink and cyan, mall-at-midnight haze",
+            "Neon yellow and cyan on a dark street",
+            "Amber phosphor terminal on near-black",
+            "Cherry-blossom pinks on soft white",
+            "Abyssal navy fading into bioluminescent teal",
+            "Espresso browns with a latte-foam finish",
+            "Pumpkin orange and witchy purple on black",
+            "Festive red, green, and gold",
+            "Light blue, pink, and white stripes",
+            "Magenta, purple, and blue",
+            "Pink, yellow, and cyan",
+            "Use the single color in auto-color.color.",
+            "Use the theme named in auto-color.customTheme (defined in auto-color.customThemes)."
           ],
           "default": "auto",
           "scope": "window",
           "order": 5,
-          "markdownDescription": "Same as **Auto Color: Select theme**. `auto` derives the palette from the workspace; any named theme paints that fixed palette instead (the workspace identity and random seed are ignored).",
+          "markdownDescription": "Same as **Auto Color: Select theme**. `auto` derives the palette from the workspace; any named theme paints that fixed palette instead (the workspace identity and random seed are ignored). `color` uses `auto-color.color` and `custom` uses `auto-color.customTheme`.",
           "description": "Theme palette to paint: auto (workspace-derived) or a named theme. Same as the Select theme command."
         },
         "auto-color.randomSeed": {
@@ -192,6 +294,118 @@
           "order": 6,
           "markdownDescription": "Non-zero locks the palette to a random choice (set by **Randomize color**). Use `0` or clear for folder-path colors (**Reset to default color**).",
           "description": "Random palette seed; 0 means derive from folder path. Set by Randomize / Reset commands."
+        },
+        "auto-color.color": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "markdownDescription": "Color used when `auto-color.theme` is `color`. A hex color (`#rgb` or `#rrggbb`) or a color name (red, orange, yellow, green, teal, cyan, blue, indigo, purple, pink, brown, gray). Same as **Auto Color: Pick a color**.",
+          "description": "Color used when theme is \"color\": a hex value or a common color name.",
+          "order": 7
+        },
+        "auto-color.customThemes": {
+          "type": "object",
+          "default": {},
+          "scope": "window",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Color of the title bar (hex or color name)."
+              },
+              "activity": {
+                "type": "string",
+                "description": "Color of the activity bar. Defaults to title."
+              },
+              "status": {
+                "type": "string",
+                "description": "Color of the status bar. Defaults to activity."
+              },
+              "surface": {
+                "type": "string",
+                "description": "Tint of editor, sidebar, and panels."
+              },
+              "foreground": {
+                "type": "string",
+                "description": "Text color on the bars."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "dark",
+                  "light"
+                ],
+                "description": "Force a dark or light palette."
+              }
+            },
+            "required": [
+              "title"
+            ]
+          },
+          "markdownDescription": "Your own named themes, usable via `auto-color.theme` = `custom` and `auto-color.customTheme`. Colors are hex or color names. Can live in user settings or be shared in the repo's `.vscode/settings.json`.\n\n```json\n\"auto-color.customThemes\": {\n  \"Brand\": { \"title\": \"#0b3d91\", \"activity\": \"#1252c9\", \"status\": \"#d81b60\", \"kind\": \"dark\" }\n}\n```",
+          "description": "Named custom themes: each has a title color and optional activity, status, surface, foreground, and kind.",
+          "order": 8
+        },
+        "auto-color.customTheme": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "markdownDescription": "Name of the theme from `auto-color.customThemes` used when `auto-color.theme` is `custom`.",
+          "description": "Custom theme name used when theme is \"custom\".",
+          "order": 9
+        },
+        "auto-color.favorites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "application",
+          "markdownDescription": "Saved color choices (`auto`, `seed:<n>`, a theme id, `#rrggbb`, or `custom:<name>`), cycled by **Auto Color: Next favorite**. Managed by **Add current colors to favorites** and **Remove a favorite**.",
+          "description": "Saved color choices cycled by the Next favorite command.",
+          "order": 10
+        },
+        "auto-color.branchAlert": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "markdownDescription": "Paint the bars in `auto-color.branchAlertColor` while a protected branch (see `auto-color.protectedBranches`) is checked out.",
+          "description": "Paint the bars in the alert color on protected branches.",
+          "order": 11
+        },
+        "auto-color.protectedBranches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "main",
+            "master",
+            "production",
+            "prod",
+            "release/*"
+          ],
+          "scope": "window",
+          "markdownDescription": "Branch names that trigger the branch alert. `*` matches any run of characters, e.g. `release/*`.",
+          "description": "Protected branch names; * is a wildcard.",
+          "order": 12
+        },
+        "auto-color.branchAlertColor": {
+          "type": "string",
+          "default": "#c62828",
+          "scope": "window",
+          "markdownDescription": "Color used by the branch alert. A hex color (`#rgb` or `#rrggbb`) or a color name (red, orange, yellow, green, teal, cyan, blue, indigo, purple, pink, brown, gray).",
+          "description": "Branch alert color (hex or color name).",
+          "order": 13
+        },
+        "auto-color.environmentColors": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "In Remote SSH, Dev Container, WSL, Codespaces, or tunnel windows, paint the status bar in that environment's color.",
+          "description": "Color the status bar by remote environment.",
+          "order": 14
         }
       }
     }
@@ -206,7 +420,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "test": "npm run clean && tsc -p ./ && node --test \"out/**/*.test.js\"",
-    "package": "vsce package"
+    "package": "vsce package",
+    "package:cli": "npm run compile && node scripts/build-cli-package.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
