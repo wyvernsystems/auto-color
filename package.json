@@ -428,7 +428,7 @@
     "package:cli": "npm run compile && node scripts/build-cli-package.mjs"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^26.6.5",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.2.2",
     "typescript": "^5.3.3"
