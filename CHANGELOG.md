@@ -2,6 +2,15 @@
 
 All notable changes to **Auto Color** will be documented in this file.
 
+## [2.1.1] - 2026-10-18
+
+### Changed
+
+- The license copyright holder is now Wyvern Systems LLC. The license is still MIT.
+- The extension manifest and the `auto-color-cli` package list Ron Picard (<https://wyvernsystems.com>) as the author, and the READMEs credit Wyvern Systems.
+
+[2.1.1]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.1.1
+
 ## [2.1.0] - 2026-10-18
 
 ### Added
@@ -17,7 +26,7 @@ All notable changes to **Auto Color** will be documented in this file.
 ### Changed
 
 - Every bar's text now meets WCAG AA contrast (4.5:1) automatically, and theme foregrounds that would be unreadable fall back to black or white text. Some palettes (Ocean, Sunset, Rainbow, and some auto pastel colors) now get darker or lighter bar text than before.
-- - The marketplace listing is renamed **Auto Color: Workspace & Window Colors**, with a description and keywords for workspace, window, title bar, and status bar colors, so searches in Cursor, Open VSX, and the VS Code Marketplace find it. The extension ID `WyvernSystemsLLC.auto-color` is unchanged, so existing installs update normally.
+- The marketplace listing is renamed **Auto Color: Workspace & Window Colors**, with a description and keywords for workspace, window, title bar, and status bar colors, so searches in Cursor, Open VSX, and the VS Code Marketplace find it. The extension ID `WyvernSystemsLLC.auto-color` is unchanged, so existing installs update normally.
 
 ### Fixed
 
