@@ -39,3 +39,5 @@ editors are detected by their config folder (`.vscode`, `.zed`).
 
 - Source and issues: <https://github.com/wyvernsystems/auto-color-vscode-extension>
 - License: MIT
+
+Built by Ron Picard at [Wyvern Systems](https://wyvernsystems.com).

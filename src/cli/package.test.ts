@@ -33,6 +33,7 @@ describe("auto-color-cli package build", () => {
     );
     assert.equal(pkg.name, "auto-color-cli");
     assert.equal(pkg.version, rootPkg.version);
+    assert.deepEqual(pkg.author, rootPkg.author);
     assert.deepEqual(pkg.bin, { "auto-color": "out/cli.js" });
     assert.equal(pkg.dependencies, undefined);
     assert.ok(statSync(join(pkgDir, "out", "cli.js")).mode & 0o100);

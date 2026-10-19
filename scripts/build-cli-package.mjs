@@ -57,6 +57,7 @@ const pkg = {
   bin: { "auto-color": "out/cli.js" },
   files: ["out", "README.md", "LICENSE"],
   license: "MIT",
+  author: root_pkg.author,
   repository: root_pkg.repository,
   homepage: root_pkg.homepage,
   bugs: root_pkg.bugs,
