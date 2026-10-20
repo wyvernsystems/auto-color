@@ -12,4 +12,4 @@ The extension does **not** require you to mark a folder as “trusted” for Aut
 
 ## Reporting issues
 
-Report suspected vulnerabilities via [GitHub Issues](https://github.com/wyvernsystems/auto-color-vscode-extension/issues). Include editor version, extension version, and steps to reproduce.
+Report suspected vulnerabilities via [GitHub Issues](https://github.com/wyvernsystems/auto-color/issues). Include editor version, extension version, and steps to reproduce.

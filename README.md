@@ -155,6 +155,6 @@ node out/cli.js /path/to/project --theme matrix
 
 ![Cursor example — Auto Color, purple tint](images/readme-hero-cursor.png)
 
-Repository: [wyvernsystems/auto-color-vscode-extension](https://github.com/wyvernsystems/auto-color-vscode-extension) · [MIT](LICENSE) · [Security](SECURITY.md) · [Releasing](docs/RELEASING.md)
+Repository: [wyvernsystems/auto-color](https://github.com/wyvernsystems/auto-color) · [MIT](LICENSE) · [Security](SECURITY.md) · [Releasing](docs/RELEASING.md)
 
 Built by Ron Picard at [Wyvern Systems](https://wyvernsystems.com).

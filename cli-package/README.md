@@ -3,7 +3,7 @@
 Give every project its own editor colors from the command line. It writes a
 deterministic color palette (title bar, status bar, sidebar, tabs, and more)
 into the native settings of VS Code and Zed, using the same palette engine as
-the [Auto Color extension](https://github.com/wyvernsystems/auto-color-vscode-extension).
+the [Auto Color extension](https://github.com/wyvernsystems/auto-color).
 
 ## Usage
 
@@ -37,7 +37,7 @@ editors are detected by their config folder (`.vscode`, `.zed`).
 
 ## Links
 
-- Source and issues: <https://github.com/wyvernsystems/auto-color-vscode-extension>
+- Source and issues: <https://github.com/wyvernsystems/auto-color>
 - License: MIT
 
 Built by Ron Picard at [Wyvern Systems](https://wyvernsystems.com).

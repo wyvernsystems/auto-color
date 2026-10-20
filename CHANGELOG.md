@@ -2,6 +2,14 @@
 
 All notable changes to **Auto Color** will be documented in this file.
 
+## [2.1.2] - 2026-10-20
+
+### Changed
+
+- The GitHub repository is renamed to [`wyvernsystems/auto-color`](https://github.com/wyvernsystems/auto-color), and the extension's and `auto-color-cli`'s homepage, issues, and repository links point there. Old `auto-color-vscode-extension` URLs redirect. The extension ID `WyvernSystemsLLC.auto-color` and its settings are unchanged.
+
+[2.1.2]: https://github.com/wyvernsystems/auto-color/releases/tag/v2.1.2
+
 ## [2.1.1] - 2026-10-18
 
 ### Changed
@@ -9,7 +17,7 @@ All notable changes to **Auto Color** will be documented in this file.
 - The license copyright holder is now Wyvern Systems LLC. The license is still MIT.
 - The extension manifest and the `auto-color-cli` package list Ron Picard (<https://wyvernsystems.com>) as the author, and the READMEs credit Wyvern Systems.
 
-[2.1.1]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.1.1
+[2.1.1]: https://github.com/wyvernsystems/auto-color/releases/tag/v2.1.1
 
 ## [2.1.0] - 2026-10-18
 
@@ -33,7 +41,7 @@ All notable changes to **Auto Color** will be documented in this file.
 - The extension package no longer ships agent instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.opencode/`) or the release docs.
 - Very saturated or very dark derived colors could produce an invalid hex color.
 
-[2.1.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.1.0
+[2.1.0]: https://github.com/wyvernsystems/auto-color/releases/tag/v2.1.0
 
 ## [2.0.0] - 2026-08-30
 
@@ -56,7 +64,7 @@ All notable changes to **Auto Color** will be documented in this file.
 - Automatic coloring now remains blocked until workspace-file checks finish and fails closed on filesystem errors instead of treating every error as a missing settings file.
 - Invalid random seeds from manually edited settings are rejected unless they are whole numbers in the documented unsigned 32-bit range.
 
-[2.0.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v2.0.0
+[2.0.0]: https://github.com/wyvernsystems/auto-color/releases/tag/v2.0.0
 
 ## [1.0.5] - 2026-05-05
 
@@ -64,7 +72,7 @@ All notable changes to **Auto Color** will be documented in this file.
 
 - **New window / multi-root:** Do not auto-apply tint when workspace-level `workbench.colorCustomizations` already exists (detected via configuration), or when a multi-root `.code-workspace` keeps colors only in a folder’s `.vscode/settings.json` while workspace `settings` is empty—previously automatic coloring could overwrite existing colors in those cases.
 
-[1.0.5]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.5
+[1.0.5]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.5
 
 ## [1.0.4] - 2026-04-14
 
@@ -77,7 +85,7 @@ All notable changes to **Auto Color** will be documented in this file.
 
 - **README:** Expanded **What it does** (when Auto Color stays hands-off vs when you use a command); **File it writes** cross-reference; spelling, grammar, and markdown fixes; **Examples** screenshots wired up again.
 
-[1.0.4]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.4
+[1.0.4]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.4
 
 ## [1.0.3] - 2026-04-13
 
@@ -85,7 +93,7 @@ All notable changes to **Auto Color** will be documented in this file.
 
 - README: **Examples** section at the bottom; removed privacy note under screenshots.
 
-[1.0.3]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.3
+[1.0.3]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.3
 
 ## [1.0.2] - 2026-04-13
 
@@ -93,7 +101,7 @@ All notable changes to **Auto Color** will be documented in this file.
 
 - **Workspace Trust:** Removed `untrustedWorkspaces` manifest restrictions and all trust checks so Auto Color works immediately without requiring the user to trust the workspace (easier default experience). Other hardening (e.g. `crypto` random seed, path length cap, seed validation, `.vscodeignore` patterns) remains.
 
-[1.0.2]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.2
+[1.0.2]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.2
 
 ## [1.0.1] - 2026-04-13
 
@@ -106,7 +114,7 @@ All notable changes to **Auto Color** will be documented in this file.
 - **Packaging:** `.vscodeignore` excludes common secret filename patterns from the VSIX.
 - **Repo:** [SECURITY.md](SECURITY.md), Dependabot for npm, README security summary.
 
-[1.0.1]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.1
+[1.0.1]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.1
 
 ## [1.0.0] - 2026-04-13
 
@@ -119,7 +127,7 @@ All notable changes to **Auto Color** will be documented in this file.
 
 - Successor to **AutoColorWorkspace** (`WyvernSystemsLLC.autocolor-workspace`). Migrate by installing **Auto Color**, uninstalling the old extension, and updating User/Workspace JSON: `autocolor-workspace.*` → `auto-color.*` if you had overrides.
 
-[1.0.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v1.0.0
+[1.0.0]: https://github.com/wyvernsystems/auto-color/releases/tag/v1.0.0
 
 ---
 
@@ -136,7 +144,7 @@ Earlier releases shipped as **AutoColorWorkspace**; history below retains origin
 - **README** expanded for Marketplace / repo details (features, tables, artwork note)
 - **galleryBanner** tint updated to complement the new artwork
 
-[0.2.1]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v0.2.1
+[0.2.1]: https://github.com/wyvernsystems/auto-color/releases/tag/v0.2.1
 
 ## [0.2.0] - 2026-04-13
 
@@ -150,7 +158,7 @@ Earlier releases shipped as **AutoColorWorkspace**; history below retains origin
 
 - **Reset colors (this workspace)** command (use **Disable for this workspace** or clear keys in settings if needed)
 
-[0.2.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v0.2.0
+[0.2.0]: https://github.com/wyvernsystems/auto-color/releases/tag/v0.2.0
 
 ## [0.1.0] - 2026-04-11
 
@@ -162,4 +170,4 @@ Earlier releases shipped as **AutoColorWorkspace**; history below retains origin
 - Commands: global enable/disable, per-workspace enable/disable, reset colors for this workspace
 - Settings: `autocolor-workspace.enabled`, `autocolor-workspace.workspaceDisabled`
 
-[0.1.0]: https://github.com/wyvernsystems/auto-color-vscode-extension/releases/tag/v0.1.0
+[0.1.0]: https://github.com/wyvernsystems/auto-color/releases/tag/v0.1.0

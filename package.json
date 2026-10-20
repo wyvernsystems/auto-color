@@ -2,7 +2,7 @@
   "name": "auto-color",
   "displayName": "Auto Color: Workspace & Window Colors",
   "description": "Color-code every workspace window automatically: tinted title bar, activity bar, and status bar per project so you can tell VS Code and Cursor windows apart at a glance. Zero setup, light and dark aware, or pick a named theme: Matrix, GitHub, Dracula, Nord, Solarized, Monokai, Gruvbox, and more.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "license": "MIT",
   "author": {
     "name": "Ron Picard",
@@ -11,12 +11,12 @@
   "publisher": "WyvernSystemsLLC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wyvernsystems/auto-color-vscode-extension.git"
+    "url": "https://github.com/wyvernsystems/auto-color.git"
   },
   "bugs": {
-    "url": "https://github.com/wyvernsystems/auto-color-vscode-extension/issues"
+    "url": "https://github.com/wyvernsystems/auto-color/issues"
   },
-  "homepage": "https://github.com/wyvernsystems/auto-color-vscode-extension#readme",
+  "homepage": "https://github.com/wyvernsystems/auto-color#readme",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
