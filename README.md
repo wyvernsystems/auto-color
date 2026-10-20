@@ -1,5 +1,7 @@
 # Auto Color
 
+Product page: [wyvernsystems.com/products/auto-color](https://wyvernsystems.com/products/auto-color/).
+
 ## What it does
 
 Auto Color picks a **color theme per workspace** and applies it to the window: pastel **title, activity, and status** bars and a matching **tint** on the editor, sidebar, tabs, terminal, and related UI. Your syntax theme still controls most text; this mainly changes **backgrounds** so each project looks distinct. The tint follows your color theme—**dark themes get dark tinted surfaces, light themes get light ones**—and repaints automatically when you switch themes. Prefer a fixed look for a workspace? **Auto Color: Select theme** paints a **named theme** instead—one of **32 named themes** (Matrix, Dracula, Nord, Catppuccin, Tokyo Night, and more), a **color you pick**, or your own **custom theme** (see **Commands**, **Colors and custom themes**).

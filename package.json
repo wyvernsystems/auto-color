@@ -16,7 +16,7 @@
   "bugs": {
     "url": "https://github.com/wyvernsystems/auto-color/issues"
   },
-  "homepage": "https://github.com/wyvernsystems/auto-color#readme",
+  "homepage": "https://wyvernsystems.com/products/auto-color/",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"

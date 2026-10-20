@@ -59,7 +59,8 @@ const pkg = {
   license: "MIT",
   author: root_pkg.author,
   repository: root_pkg.repository,
-  homepage: root_pkg.homepage,
+  // The extension's homepage is its wyvernsystems.com page, which covers the editor extension only.
+  homepage: `${root_pkg.repository.url.replace(/\.git$/, "")}#readme`,
   bugs: root_pkg.bugs,
   keywords: [
     "workspace color",

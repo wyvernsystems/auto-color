@@ -2,6 +2,12 @@
 
 All notable changes to **Auto Color** will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- The extension's homepage link on the VS Marketplace and Open VSX now opens its product page, [wyvernsystems.com/products/auto-color](https://wyvernsystems.com/products/auto-color/), instead of the GitHub README, and the README links there too. Issues and the source repository stay on GitHub, and `auto-color-cli`'s homepage stays its GitHub README.
+
 ## [2.1.2] - 2026-10-20
 
 ### Changed
