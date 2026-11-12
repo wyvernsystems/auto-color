@@ -2,6 +2,21 @@
 
 Auto Color ships to the [VS Code Marketplace](https://marketplace.visualstudio.com/) and [Open VSX](https://open-vsx.org/) from the same VSIX.
 
+## Tooling
+
+Use Node.js 22 or newer: `@vscode/vsce` 4 requires it, and CI runs Node 22.
+Two dev dependencies are deliberately held below their newest release:
+
+| Package | Held at | Why | Lift when |
+| --- | --- | --- | --- |
+| `@types/vscode` | `~1.85.0` | Matches `engines.vscode`, so compiling rejects APIs newer than the oldest supported host | `engines.vscode` is raised (bump both together) |
+| `@types/node` | `^20` | The CLI declares `engines.node: >=18`; newer majors type APIs that Node 18/20 lack | The CLI's Node floor moves up |
+
+`overrides.minimatch` in `package.json` forces minimatch 11 under `vsce`,
+which still asks for 10.x
+([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)).
+Remove it once `vsce` depends on 11.
+
 ## Prepare
 
 1. Update `version` in `package.json` and run `npm install --package-lock-only` to sync the lockfile.
