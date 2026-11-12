@@ -26,7 +26,7 @@ describe("auto-color-cli package build", () => {
   );
   const files = walk(pkgDir);
 
-  it("writes a package.json with the CLI name, bin, and root version", () => {
+  it("CLI-9: writes a package.json with the CLI name, bin, and root version", () => {
     const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
     const rootPkg = JSON.parse(
       readFileSync(join(repoRoot, "package.json"), "utf8"),
@@ -42,7 +42,7 @@ describe("auto-color-cli package build", () => {
     assert.ok(statSync(join(pkgDir, "out", "cli.js")).mode & 0o100);
   });
 
-  it("ships no tests and nothing that depends on vscode", () => {
+  it("CLI-9: ships no tests and nothing that depends on vscode", () => {
     assert.ok(files.length > 0);
     assert.deepEqual(
       files.filter((f) => f.endsWith(".test.js")),
@@ -57,7 +57,7 @@ describe("auto-color-cli package build", () => {
     }
   });
 
-  it("runs --help from the packaged output", () => {
+  it("CLI-9: runs --help from the packaged output", () => {
     const output = execFileSync(
       process.execPath,
       [join(pkgDir, "out", "cli.js"), "--help"],

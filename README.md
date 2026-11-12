@@ -4,7 +4,7 @@ Product page: [wyvernsystems.com/products/auto-color](https://wyvernsystems.com/
 
 ## What it does
 
-Auto Color picks a **color theme per workspace** and applies it to the window: pastel **title, activity, and status** bars and a matching **tint** on the editor, sidebar, tabs, terminal, and related UI. Your syntax theme still controls most text; this mainly changes **backgrounds** so each project looks distinct. The tint follows your color theme—**dark themes get dark tinted surfaces, light themes get light ones**—and repaints automatically when you switch themes. Prefer a fixed look for a workspace? **Auto Color: Select theme** paints a **named theme** instead—one of **32 named themes** (Matrix, Dracula, Nord, Catppuccin, Tokyo Night, and more), a **color you pick**, or your own **custom theme** (see **Commands**, **Colors and custom themes**).
+Auto Color picks a **color theme per workspace** and applies it to the window: pastel **title, activity, and status** bars and a matching **tint** on the editor, sidebar, tabs, terminal, and related UI. Your syntax theme still controls most text; this mainly changes **backgrounds** so each project looks distinct. The tint follows your color theme—**dark themes get dark tinted surfaces, light themes get light ones**—and repaints automatically when you switch themes. Prefer a fixed look for a workspace? **Auto Color: Select theme** paints a **named theme** instead—one of **33 named themes** (Matrix, Dracula, Nord, Catppuccin, Tokyo Night, and more), a **color you pick**, or your own **custom theme** (see **Commands**, **Colors and custom themes**).
 
 **What counts as a “workspace” here:** whatever VS Code or Cursor treats as the current workspace—almost always **a folder you opened** (**File → Open Folder**). That one folder (and its `.vscode/settings.json`) gets one palette. If you open **another window** with a **different** folder, that’s a **different** workspace and can have a **different** color. A **multi-root workspace** (a `.code-workspace` file with several folders) is still **one** workspace for this extension: colors and settings are stored with that workspace, and the **first** folder in the list is what the default tint is derived from (unless you use **Randomize**).
 
@@ -32,7 +32,7 @@ Inside that file, it adds a `workbench.colorCustomizations` object with the hex 
 
 - **No network** — colors are computed locally; nothing is sent to a server.
 - **No trust prompt required** — Auto Color runs without asking you to “trust” the workspace first.
-- **Reporting** — see [SECURITY.md](SECURITY.md).
+- **Reporting** — see [SECURITY.md](.github/SECURITY.md).
 
 ## Commands
 
@@ -157,6 +157,6 @@ node out/cli.js /path/to/project --theme matrix
 
 ![Cursor example — Auto Color, purple tint](images/readme-hero-cursor.png)
 
-Repository: [wyvernsystems/auto-color](https://github.com/wyvernsystems/auto-color) · [MIT](LICENSE) · [Security](SECURITY.md) · [Releasing](docs/RELEASING.md)
+Repository: [wyvernsystems/auto-color](https://github.com/wyvernsystems/auto-color) · [MIT](LICENSE) · [Security](.github/SECURITY.md) · [Requirements](docs/requirements/README.md) · [Releasing](docs/RELEASING.md)
 
 Built by Ron Picard at [Wyvern Systems](https://wyvernsystems.com).

@@ -4,7 +4,7 @@ import { THEME_PRESET_IDS } from "../core/themes";
 import { parseCliOptions } from "./options";
 
 describe("parseCliOptions", () => {
-  it("returns defaults when no arguments are given", () => {
+  it("CLI-2: returns defaults when no arguments are given", () => {
     assert.deepEqual(parseCliOptions([]), {
       dir: ".",
       source: "path",
@@ -19,7 +19,7 @@ describe("parseCliOptions", () => {
     });
   });
 
-  it("parses every flag and the directory positional", () => {
+  it("CLI-2: parses every flag and the directory positional", () => {
     assert.deepEqual(
       parseCliOptions([
         "/some/dir",
@@ -51,17 +51,17 @@ describe("parseCliOptions", () => {
     );
   });
 
-  it("parses --help", () => {
+  it("CLI-2: parses --help", () => {
     assert.equal(parseCliOptions(["--help"]).help, true);
   });
 
-  it("accepts a named theme preset as --theme", () => {
+  it("CLI-2: accepts a named theme preset as --theme", () => {
     assert.equal(parseCliOptions(["--theme", "matrix"]).theme, "matrix");
     assert.equal(parseCliOptions(["--theme", "githubLight"]).theme, "githubLight");
     assert.equal(parseCliOptions(["--theme", "rainbow"]).theme, "rainbow");
   });
 
-  it("throws on invalid values instead of silently defaulting", () => {
+  it("CLI-3: throws on invalid values instead of silently defaulting", () => {
     assert.throws(() => parseCliOptions(["--source", "remote"]), /--source/);
     assert.throws(() => parseCliOptions(["--scope", "bars"]), /--scope/);
     assert.throws(() => parseCliOptions(["--theme", "auto"]), /--theme/);
@@ -72,24 +72,24 @@ describe("parseCliOptions", () => {
     assert.throws(() => parseCliOptions(["a", "b"]), /directory/);
   });
 
-  it("accepts every theme preset id except auto", () => {
+  it("CLI-2: accepts every theme preset id except auto", () => {
     for (const id of THEME_PRESET_IDS.filter((t) => t !== "auto")) {
       assert.equal(parseCliOptions(["--theme", id]).theme, id);
     }
   });
 
-  it("normalizes --color hex and names", () => {
+  it("CLI-2: normalizes --color hex and names", () => {
     assert.equal(parseCliOptions(["--color", "#ABC"]).color, "#aabbcc");
     assert.equal(parseCliOptions(["--color", "#1E88E5"]).color, "#1e88e5");
     assert.equal(parseCliOptions(["--color", "Blue"]).color, "#1e88e5");
   });
 
-  it("rejects an invalid --color and lists the color names", () => {
+  it("CLI-3: rejects an invalid --color and lists the color names", () => {
     assert.throws(() => parseCliOptions(["--color", "chartreuse"]), /--color.*red.*gray/);
     assert.throws(() => parseCliOptions(["--color", "#12"]), /--color/);
   });
 
-  it("rejects --color with --seed or a named preset, allows dark/light", () => {
+  it("CLI-3: rejects --color with --seed or a named preset, allows dark/light", () => {
     assert.throws(() => parseCliOptions(["--color", "red", "--seed", "5"]), /--seed/);
     assert.throws(() => parseCliOptions(["--color", "red", "--theme", "matrix"]), /--theme/);
     const o = parseCliOptions(["--color", "red", "--theme", "light"]);

@@ -3,12 +3,12 @@ import { describe, it } from "node:test";
 import { isNonEmptyPlainObject } from "./settings-shape";
 
 describe("isNonEmptyPlainObject", () => {
-  it("returns true when the value is a non-array object with keys", () => {
+  it("WRITE-1: returns true when the value is a non-array object with keys", () => {
     assert.equal(isNonEmptyPlainObject({ settings: true }), true);
     assert.equal(isNonEmptyPlainObject({ "editor.background": "#111" }), true);
   });
 
-  it("returns false when the value is empty, null, an array, or a primitive", () => {
+  it("WRITE-1: returns false when the value is empty, null, an array, or a primitive", () => {
     assert.equal(isNonEmptyPlainObject({}), false);
     assert.equal(isNonEmptyPlainObject(null), false);
     assert.equal(isNonEmptyPlainObject(undefined), false);

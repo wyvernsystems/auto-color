@@ -19,11 +19,11 @@ function overridesOf(text: string): Record<string, string> {
 }
 
 describe("renderZedSettings", () => {
-  it("exposes the workspace-relative settings path", () => {
+  it("CLI-8: exposes the workspace-relative settings path", () => {
     assert.equal(ZED_SETTINGS_PATH, ".zed/settings.json");
   });
 
-  it("creates theme overrides for bars and surfaces when scope is all", () => {
+  it("CLI-8: creates theme overrides for bars and surfaces when scope is all", () => {
     const text = renderZedSettings({
       existingText: undefined,
       hash,
@@ -38,7 +38,7 @@ describe("renderZedSettings", () => {
     assert.ok(relativeLuminance(overrides["editor.background"]!) < 0.1);
   });
 
-  it("writes only the title and status bars when scope is headFooter", () => {
+  it("CLI-8: writes only the title and status bars when scope is headFooter", () => {
     const overrides = overridesOf(
       renderZedSettings({
         existingText: undefined,
@@ -53,7 +53,7 @@ describe("renderZedSettings", () => {
     ]);
   });
 
-  it("paints the named theme palette when a preset is given", () => {
+  it("CLI-8: paints the named theme palette when a preset is given", () => {
     const overrides = overridesOf(
       renderZedSettings({
         existingText: undefined,
@@ -68,7 +68,7 @@ describe("renderZedSettings", () => {
     assert.equal(overrides["editor.background"], palette.editorBg);
   });
 
-  it("uses light surfaces when themeKind is light", () => {
+  it("CLI-8, PAL-3: uses light surfaces when themeKind is light", () => {
     const overrides = overridesOf(
       renderZedSettings({
         existingText: undefined,
@@ -80,7 +80,7 @@ describe("renderZedSettings", () => {
     assert.ok(relativeLuminance(overrides["editor.background"]!) > 0.7);
   });
 
-  it("preserves unrelated settings and unrelated override keys", () => {
+  it("CLI-6: preserves unrelated settings and unrelated override keys", () => {
     const text = renderZedSettings({
       existingText:
         '{"theme":"One Dark","experimental.theme_overrides":{"text":"#123456"}}',
@@ -93,7 +93,7 @@ describe("renderZedSettings", () => {
     assert.equal(overridesOf(text)["text"], "#123456");
   });
 
-  it("throws when the file cannot be parsed as strict JSON", () => {
+  it("CLI-6: throws when the file cannot be parsed as strict JSON", () => {
     assert.throws(
       () =>
         renderZedSettings({
@@ -106,7 +106,7 @@ describe("renderZedSettings", () => {
     );
   });
 
-  it("removes only managed keys and drops an emptied overrides object", () => {
+  it("CLI-5: removes only managed keys and drops an emptied overrides object", () => {
     const painted = renderZedSettings({
       existingText: '{"theme":"One Dark"}',
       hash,

@@ -16,6 +16,7 @@ single file.
 - `src/cli/` + `src/cli.ts` are the `auto-color` CLI (bin entry `out/cli.js`); `src/extension.ts` and `src/workspace-eligibility.ts` are the VS Code extension. Both are thin consumers of `core`.
 - The extension and every writer must produce identical colors for the same hash/scope/theme/preset — share `core` computations (`computeWorkspacePalette`, `computeThemePresetPalette`), never re-derive them.
 - Tests are colocated (`src/**/foo.test.ts`) and use `node:test` with `node:assert/strict`. CLI end-to-end tests run against temp dirs (`src/cli/main.test.ts`).
+- Requirements are in `docs/requirements/`, one file per feature with stable IDs; test titles start with the IDs they cover (`grep -rn "PAL-" src/`).
 - The `.vscodeignore` excludes `out/cli*` and `out/writers/**` from the VSIX; keep it in sync when adding top-level output.
 - The engineering rules are the AI Rulebook block at the end of this file (`CLAUDE.md` imports it for Claude Code). Change them with the AI Rulebook extension, not by hand.
 

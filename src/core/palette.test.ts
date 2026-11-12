@@ -34,20 +34,20 @@ import {
 const HEX = /^#[0-9a-f]{6}$/;
 
 describe("hashWorkspaceIdentity", () => {
-  it("returns the same hash when path casing and slashes differ", () => {
+  it("PAL-1: returns the same hash when path casing and slashes differ", () => {
     const unix = hashWorkspaceIdentity("/Users/Ron/Project");
     const windows = hashWorkspaceIdentity("\\Users\\ron\\project");
     assert.equal(unix, windows);
   });
 
-  it("returns a uint32 when given a normal folder path", () => {
+  it("PAL-1: returns a uint32 when given a normal folder path", () => {
     const hash = hashWorkspaceIdentity("/Users/ron/project");
     assert.equal(hash, hash >>> 0);
     assert.ok(hash >= 0);
     assert.ok(hash <= 0xffffffff);
   });
 
-  it("truncates to MAX_FOLDER_PATH_LEN before hashing", () => {
+  it("PAL-1: truncates to MAX_FOLDER_PATH_LEN before hashing", () => {
     const prefix = "a".repeat(MAX_FOLDER_PATH_LEN);
     const truncated = hashWorkspaceIdentity(prefix);
     const longer = hashWorkspaceIdentity(prefix + "zzz");
@@ -63,7 +63,7 @@ describe("hashWorkspaceIdentity", () => {
 });
 
 describe("hashToPastelBase", () => {
-  it("stays in pastel hue saturation and lightness ranges when hash varies", () => {
+  it("PAL-1: stays in pastel hue saturation and lightness ranges when hash varies", () => {
     for (const hash of [0, 1, 42, 2843109148, 0xffffffff]) {
       const { h, s, l } = hashToPastelBase(hash);
       assert.ok(h >= 0 && h < 360, `hue ${h} for ${hash}`);
@@ -72,21 +72,21 @@ describe("hashToPastelBase", () => {
     }
   });
 
-  it("returns the same base when the hash is repeated", () => {
+  it("PAL-1: returns the same base when the hash is repeated", () => {
     assert.deepEqual(hashToPastelBase(12345), hashToPastelBase(12345));
   });
 });
 
 describe("hslToHex", () => {
-  it("returns #000000 when lightness is 0", () => {
+  it("PAL-10: returns #000000 when lightness is 0", () => {
     assert.equal(hslToHex(0, 1, 0), "#000000");
   });
 
-  it("returns #ffffff when lightness is 1", () => {
+  it("PAL-10: returns #ffffff when lightness is 1", () => {
     assert.equal(hslToHex(0, 1, 1), "#ffffff");
   });
 
-  it("returns a lowercase six-digit hex when given mid pastel values", () => {
+  it("PAL-10: returns a lowercase six-digit hex when given mid pastel values", () => {
     const hex = hslToHex(200, 0.2, 0.6);
     assert.match(hex, HEX);
   });
@@ -103,12 +103,12 @@ describe("relativeLuminance", () => {
 });
 
 describe("contrastingForegroundHex", () => {
-  it("returns dark text when the background is light", () => {
+  it("PAL-5: returns dark text when the background is light", () => {
     assert.equal(contrastingForegroundHex("#ffffff"), "#1e1e1e");
     assert.equal(contrastingForegroundHex("#f3f3f3"), "#1e1e1e");
   });
 
-  it("returns light text when the background is dark", () => {
+  it("PAL-5: returns light text when the background is dark", () => {
     assert.equal(contrastingForegroundHex("#000000"), "#f3f3f3");
     assert.equal(contrastingForegroundHex("#221923"), "#f3f3f3");
   });
@@ -131,11 +131,11 @@ describe("clampLightness", () => {
 });
 
 describe("parseChromeScope", () => {
-  it("returns headFooter when the value is headFooter", () => {
+  it("PAL-4: returns headFooter when the value is headFooter", () => {
     assert.equal(parseChromeScope("headFooter"), "headFooter");
   });
 
-  it("returns all when the value is missing or unknown", () => {
+  it("PAL-4: returns all when the value is missing or unknown", () => {
     assert.equal(parseChromeScope(undefined), "all");
     assert.equal(parseChromeScope("all"), "all");
     assert.equal(parseChromeScope("nope"), "all");
@@ -144,7 +144,7 @@ describe("parseChromeScope", () => {
 });
 
 describe("parseRandomSeed", () => {
-  it("returns undefined when the seed is not a valid non-zero uint32", () => {
+  it("PAL-2: returns undefined when the seed is not a valid non-zero uint32", () => {
     assert.equal(parseRandomSeed(0), undefined);
     assert.equal(parseRandomSeed(-1), undefined);
     assert.equal(parseRandomSeed(1.5), undefined);
@@ -155,7 +155,7 @@ describe("parseRandomSeed", () => {
     assert.equal(parseRandomSeed(undefined), undefined);
   });
 
-  it("returns the uint32 value when the seed is a positive finite number", () => {
+  it("PAL-2: returns the uint32 value when the seed is a positive finite number", () => {
     assert.equal(parseRandomSeed(1), 1);
     assert.equal(parseRandomSeed(2843109148), 2843109148);
     assert.equal(parseRandomSeed(4294967295), 4294967295);
@@ -163,11 +163,11 @@ describe("parseRandomSeed", () => {
 });
 
 describe("shouldApplyChrome", () => {
-  it("returns true when globally enabled and the workspace is not disabled", () => {
+  it("PAL-9: returns true when globally enabled and the workspace is not disabled", () => {
     assert.equal(shouldApplyChrome(true, false), true);
   });
 
-  it("returns false when globally disabled or the workspace is disabled", () => {
+  it("PAL-9: returns false when globally disabled or the workspace is disabled", () => {
     assert.equal(shouldApplyChrome(true, true), false);
     assert.equal(shouldApplyChrome(false, false), false);
     assert.equal(shouldApplyChrome(false, true), false);
@@ -177,7 +177,7 @@ describe("shouldApplyChrome", () => {
 describe("buildColorCustomizations", () => {
   const hash = hashWorkspaceIdentity("/Users/ron/project");
 
-  it("paints every chrome and surface key when scope is all", () => {
+  it("PAL-4: paints every chrome and surface key when scope is all", () => {
     const next = buildColorCustomizations({ hash, scope: "all", existing: {} });
     for (const key of ALL_MANAGED_KEYS) {
       assert.match(next[key] ?? "", HEX, key);
@@ -189,7 +189,7 @@ describe("buildColorCustomizations", () => {
     assert.equal(next["terminal.background"], next["editor.background"]);
   });
 
-  it("omits activity bar and surfaces when scope is headFooter", () => {
+  it("PAL-4: omits activity bar and surfaces when scope is headFooter", () => {
     const next = buildColorCustomizations({
       hash,
       scope: "headFooter",
@@ -204,7 +204,7 @@ describe("buildColorCustomizations", () => {
     }
   });
 
-  it("keeps unrelated customizations when merging into an existing map", () => {
+  it("PAL-6: keeps unrelated customizations when merging into an existing map", () => {
     const next = buildColorCustomizations({
       hash,
       scope: "all",
@@ -213,7 +213,7 @@ describe("buildColorCustomizations", () => {
     assert.equal(next["editor.cursor"], "#ff0000");
   });
 
-  it("drops deprecated foreground keys when they exist on the incoming map", () => {
+  it("PAL-6: drops deprecated foreground keys when they exist on the incoming map", () => {
     const existing = Object.fromEntries(
       DEPRECATED_COLOR_KEYS.map((key) => [key, "#abcdef"]),
     );
@@ -223,7 +223,7 @@ describe("buildColorCustomizations", () => {
     }
   });
 
-  it("clears leftover activity and surface keys when switching to headFooter", () => {
+  it("PAL-4: clears leftover activity and surface keys when switching to headFooter", () => {
     const painted = buildColorCustomizations({ hash, scope: "all", existing: {} });
     const next = buildColorCustomizations({
       hash,
@@ -243,13 +243,13 @@ describe("buildColorCustomizations", () => {
     }
   });
 
-  it("returns the same map when called twice with the same inputs", () => {
+  it("PAL-6: returns the same map when called twice with the same inputs", () => {
     const a = buildColorCustomizations({ hash, scope: "all", existing: {} });
     const b = buildColorCustomizations({ hash, scope: "all", existing: {} });
     assert.deepEqual(a, b);
   });
 
-  it("defaults to dark surfaces when themeKind is omitted", () => {
+  it("PAL-3: defaults to dark surfaces when themeKind is omitted", () => {
     const implicit = buildColorCustomizations({ hash, scope: "all", existing: {} });
     const explicit = buildColorCustomizations({
       hash,
@@ -261,7 +261,7 @@ describe("buildColorCustomizations", () => {
     assert.ok(relativeLuminance(implicit["editor.background"]!) < 0.1);
   });
 
-  it("paints light surfaces when themeKind is light", () => {
+  it("PAL-3: paints light surfaces when themeKind is light", () => {
     const next = buildColorCustomizations({
       hash,
       scope: "all",
@@ -279,7 +279,7 @@ describe("buildColorCustomizations", () => {
     );
   });
 
-  it("keeps the same bar colors when only themeKind changes", () => {
+  it("PAL-3: keeps the same bar colors when only themeKind changes", () => {
     const dark = buildColorCustomizations({
       hash,
       scope: "all",
@@ -328,7 +328,7 @@ describe("buildColorCustomizationsFromPalette", () => {
 });
 
 describe("composeWorkspacePalette", () => {
-  it("uses contrast-derived bar foregrounds when no override is given", () => {
+  it("PAL-5: uses contrast-derived bar foregrounds when no override is given", () => {
     const palette = composeWorkspacePalette({
       bars: {
         title: { h: 0, s: 0, l: 0.1 },
@@ -358,12 +358,12 @@ describe("composeWorkspacePalette", () => {
 });
 
 describe("themeKindFromVsCode", () => {
-  it("returns light for the light and high-contrast-light kinds", () => {
+  it("PAL-3: returns light for the light and high-contrast-light kinds", () => {
     assert.equal(themeKindFromVsCode(1), "light");
     assert.equal(themeKindFromVsCode(4), "light");
   });
 
-  it("returns dark for dark kinds and unknown values", () => {
+  it("PAL-3: returns dark for dark kinds and unknown values", () => {
     assert.equal(themeKindFromVsCode(2), "dark");
     assert.equal(themeKindFromVsCode(3), "dark");
     assert.equal(themeKindFromVsCode(undefined), "dark");
@@ -387,14 +387,14 @@ describe("hasManagedColorKeys", () => {
 });
 
 describe("generateSeedCandidates", () => {
-  it("skips zero and duplicate draws until it has enough unique seeds", () => {
+  it("PAL-2: skips zero and duplicate draws until it has enough unique seeds", () => {
     const draws = [0, 5, 5, 7, 9];
     let i = 0;
     const next = () => draws[Math.min(i++, draws.length - 1)];
     assert.deepEqual(generateSeedCandidates(next, 3), [5, 7, 9]);
   });
 
-  it("returns the requested number of valid seeds when draws are random", () => {
+  it("PAL-2: returns the requested number of valid seeds when draws are random", () => {
     let state = 1;
     const next = () => {
       state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -410,7 +410,7 @@ describe("generateSeedCandidates", () => {
 });
 
 describe("stripManagedColorCustomizations", () => {
-  it("returns an empty object when only managed and deprecated keys are present", () => {
+  it("PAL-7: returns an empty object when only managed and deprecated keys are present", () => {
     const existing = {
       [TITLE_BG]: "#aaaaaa",
       "editor.background": "#111111",
@@ -419,7 +419,7 @@ describe("stripManagedColorCustomizations", () => {
     assert.deepEqual(stripManagedColorCustomizations(existing), {});
   });
 
-  it("keeps unrelated keys when stripping managed colors", () => {
+  it("PAL-7: keeps unrelated keys when stripping managed colors", () => {
     const next = stripManagedColorCustomizations({
       [TITLE_BG]: "#aaaaaa",
       "editor.cursor": "#ff0000",
@@ -429,7 +429,7 @@ describe("stripManagedColorCustomizations", () => {
 });
 
 describe("hslToHex range", () => {
-  it("clamps out-of-range saturation and lightness to a valid hex color", () => {
+  it("PAL-10: clamps out-of-range saturation and lightness to a valid hex color", () => {
     for (const [h, s, l] of [
       [210, 1.4, 0.05],
       [30, 0.5, 1.2],

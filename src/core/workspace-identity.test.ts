@@ -8,13 +8,13 @@ import {
 } from "./workspace-identity";
 
 describe("parseIdentitySource", () => {
-  it("returns the source when the value is a known source", () => {
+  it("IDENT-1: returns the source when the value is a known source", () => {
     assert.equal(parseIdentitySource("path"), "path");
     assert.equal(parseIdentitySource("folderName"), "folderName");
     assert.equal(parseIdentitySource("gitRemote"), "gitRemote");
   });
 
-  it("returns path when the value is missing or unknown", () => {
+  it("IDENT-1: returns path when the value is missing or unknown", () => {
     assert.equal(parseIdentitySource(undefined), "path");
     assert.equal(parseIdentitySource("remote"), "path");
     assert.equal(parseIdentitySource(1), "path");
@@ -22,24 +22,24 @@ describe("parseIdentitySource", () => {
 });
 
 describe("folderNameFromPath", () => {
-  it("returns the last segment for unix and windows paths", () => {
+  it("IDENT-3: returns the last segment for unix and windows paths", () => {
     assert.equal(folderNameFromPath("/Users/ron/project"), "project");
     assert.equal(folderNameFromPath("C:\\work\\Project"), "Project");
   });
 
-  it("ignores trailing separators", () => {
+  it("IDENT-3: ignores trailing separators", () => {
     assert.equal(folderNameFromPath("/Users/ron/project/"), "project");
     assert.equal(folderNameFromPath("C:\\work\\project\\"), "project");
   });
 
-  it("returns the input when there is no named segment", () => {
+  it("IDENT-3: returns the input when there is no named segment", () => {
     assert.equal(folderNameFromPath("/"), "/");
     assert.equal(folderNameFromPath(""), "");
   });
 });
 
 describe("parseGitRemoteOriginUrl", () => {
-  it("returns the url of the origin remote", () => {
+  it("IDENT-4: returns the url of the origin remote", () => {
     const config = [
       "[core]",
       "\trepositoryformatversion = 0",
@@ -53,7 +53,7 @@ describe("parseGitRemoteOriginUrl", () => {
     );
   });
 
-  it("ignores other remotes even when they come first", () => {
+  it("IDENT-4: ignores other remotes even when they come first", () => {
     const config = [
       '[remote "upstream"]',
       "\turl = https://github.com/other/upstream.git",
@@ -63,7 +63,7 @@ describe("parseGitRemoteOriginUrl", () => {
     assert.equal(parseGitRemoteOriginUrl(config), "git@github.com:owner/repo.git");
   });
 
-  it("returns undefined when there is no origin url", () => {
+  it("IDENT-4: returns undefined when there is no origin url", () => {
     assert.equal(parseGitRemoteOriginUrl(""), undefined);
     assert.equal(parseGitRemoteOriginUrl("[core]\n\tbare = false"), undefined);
     assert.equal(
@@ -74,14 +74,14 @@ describe("parseGitRemoteOriginUrl", () => {
 });
 
 describe("normalizeGitRemoteUrl", () => {
-  it("normalizes https urls to lowercase host/path without .git", () => {
+  it("IDENT-4: normalizes https urls to lowercase host/path without .git", () => {
     assert.equal(
       normalizeGitRemoteUrl("https://github.com/Owner/Repo.git"),
       "github.com/owner/repo",
     );
   });
 
-  it("normalizes scp-like ssh urls to the same identity as https", () => {
+  it("IDENT-4: normalizes scp-like ssh urls to the same identity as https", () => {
     assert.equal(
       normalizeGitRemoteUrl("git@github.com:Owner/Repo.git"),
       "github.com/owner/repo",
@@ -92,7 +92,7 @@ describe("normalizeGitRemoteUrl", () => {
     );
   });
 
-  it("strips credentials and trailing slashes", () => {
+  it("IDENT-4: strips credentials and trailing slashes", () => {
     assert.equal(
       normalizeGitRemoteUrl("https://user:secret@example.com/team/repo/"),
       "example.com/team/repo",

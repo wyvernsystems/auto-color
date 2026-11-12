@@ -39,7 +39,7 @@ after(() => {
 });
 
 describe("runCli", () => {
-  it("writes settings for each detected editor", async () => {
+  it("CLI-1, CLI-8: writes settings for each detected editor", async () => {
     const root = makeProject([".vscode", ".zed"]);
     const code = await runCli([root], root, silent(), silent());
     assert.equal(code, 0);
@@ -61,7 +61,7 @@ describe("runCli", () => {
     );
   });
 
-  it("writes the named theme palette when --theme is a preset", async () => {
+  it("CLI-2: writes the named theme palette when --theme is a preset", async () => {
     const root = makeProject([".vscode"]);
     const code = await runCli(
       [root, "--theme", "matrix"],
@@ -81,7 +81,7 @@ describe("runCli", () => {
     );
   });
 
-  it("paints the --color palette for vscode and zed", async () => {
+  it("CLI-2: paints the --color palette for vscode and zed", async () => {
     const root = makeProject([".vscode", ".zed"]);
     const code = await runCli(
       [root, "--color", "blue", "--theme", "light"],
@@ -109,7 +109,7 @@ describe("runCli", () => {
     );
   });
 
-  it("rejects --color combined with --seed", async () => {
+  it("CLI-3: rejects --color combined with --seed", async () => {
     const root = makeProject([".vscode"]);
     const errors: string[] = [];
     const code = await runCli(
@@ -122,14 +122,14 @@ describe("runCli", () => {
     assert.match(errors.join("\n"), /--color cannot be combined/);
   });
 
-  it("writes nothing on a dry run", async () => {
+  it("CLI-4: writes nothing on a dry run", async () => {
     const root = makeProject([".vscode"]);
     const code = await runCli([root, "--dry-run"], root, silent(), silent());
     assert.equal(code, 0);
     assert.throws(() => readJson(join(root, ".vscode", "settings.json")));
   });
 
-  it("fails with guidance when no editor config is detected", async () => {
+  it("CLI-1: fails with guidance when no editor config is detected", async () => {
     const root = makeProject([]);
     const errors: string[] = [];
     const code = await runCli([root], root, silent(), (line) =>
@@ -139,7 +139,7 @@ describe("runCli", () => {
     assert.match(errors.join("\n"), /--targets/);
   });
 
-  it("respects --targets over detection and creates the editor directory", async () => {
+  it("CLI-1: respects --targets over detection and creates the editor directory", async () => {
     const root = makeProject([]);
     const code = await runCli(
       [root, "--targets", "zed"],
@@ -151,7 +151,7 @@ describe("runCli", () => {
     assert.ok(readJson(join(root, ".zed", "settings.json")));
   });
 
-  it("derives the color from the git origin remote when asked", async () => {
+  it("CLI-2, IDENT-4: derives the color from the git origin remote when asked", async () => {
     const rootA = makeProject([".vscode", ".git"]);
     const rootB = makeProject([".vscode", ".git"]);
     const gitConfig = [
@@ -175,7 +175,7 @@ describe("runCli", () => {
     );
   });
 
-  it("keeps a failing target from blocking the others and reports failure", async () => {
+  it("CLI-7: keeps a failing target from blocking the others and reports failure", async () => {
     const root = makeProject([".vscode", ".zed"]);
     writeFileSync(
       join(root, ".vscode", "settings.json"),
@@ -190,7 +190,7 @@ describe("runCli", () => {
     assert.match(errors.join("\n"), /\.vscode\/settings\.json/);
   });
 
-  it("removes managed keys with --remove", async () => {
+  it("CLI-5: removes managed keys with --remove", async () => {
     const root = makeProject([".vscode"]);
     assert.equal(await runCli([root], root, silent(), silent()), 0);
     assert.equal(await runCli([root, "--remove"], root, silent(), silent()), 0);

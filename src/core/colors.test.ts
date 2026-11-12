@@ -42,31 +42,31 @@ function hueDistance(a: number, b: number): number {
 }
 
 describe("parseColor", () => {
-  it("expands #rgb and lowercases #RRGGBB", () => {
+  it("THEME-4: expands #rgb and lowercases #RRGGBB", () => {
     assert.equal(parseColor("#abc"), "#aabbcc");
     assert.equal(parseColor("#ABC"), "#aabbcc");
     assert.equal(parseColor("#1E88E5"), "#1e88e5");
   });
 
-  it("accepts color names in any case with whitespace", () => {
+  it("THEME-4: accepts color names in any case with whitespace", () => {
     assert.equal(parseColor("blue"), COMMON_COLORS.blue);
     assert.equal(parseColor("Blue"), COMMON_COLORS.blue);
     assert.equal(parseColor("  PURPLE  "), COMMON_COLORS.purple);
   });
 
-  it("rejects malformed values", () => {
+  it("THEME-5: rejects malformed values", () => {
     for (const bad of ["#12345", "red2", "", "#gggggg", "123456", "#1234567"]) {
       assert.equal(parseColor(bad), undefined, bad);
     }
   });
 
-  it("rejects non-strings", () => {
+  it("THEME-5: rejects non-strings", () => {
     for (const bad of [undefined, null, 5, {}, [], true]) {
       assert.equal(parseColor(bad), undefined);
     }
   });
 
-  it("rejects prototype keys", () => {
+  it("THEME-5: rejects prototype keys", () => {
     for (const bad of ["constructor", "__proto__", "toString", "hasOwnProperty"]) {
       assert.equal(parseColor(bad), undefined, bad);
     }
@@ -98,7 +98,7 @@ describe("hexToHsl", () => {
 describe("computeColorPalette", () => {
   for (const [name, hex] of Object.entries(COMMON_COLORS)) {
     for (const kind of KINDS) {
-      it(`keeps hue and readable bars for ${name} (${kind})`, () => {
+      it(`THEME-4, PAL-5: keeps hue and readable bars for ${name} (${kind})`, () => {
         const palette = computeColorPalette(hex, kind);
         const hue = hexToHsl(hex).h;
         const saturated = hexToHsl(hex).s > 0.05;
@@ -114,7 +114,7 @@ describe("computeColorPalette", () => {
 });
 
 describe("parseCustomThemes", () => {
-  it("defaults activity to title and status to activity", () => {
+  it("THEME-6: defaults activity to title and status to activity", () => {
     const { themes, errors } = parseCustomThemes({ A: { title: "#3366cc" }, B: { title: "red", activity: "blue" } });
     assert.deepEqual(errors, []);
     assert.equal(themes.get("A")?.activity, "#3366cc");
@@ -124,7 +124,7 @@ describe("parseCustomThemes", () => {
     assert.equal(themes.get("B")?.status, COMMON_COLORS.blue);
   });
 
-  it("accepts optional surface, kind, and foreground", () => {
+  it("THEME-6: accepts optional surface, kind, and foreground", () => {
     const { themes, errors } = parseCustomThemes({
       X: { title: "#111", surface: "green", kind: "light", foreground: "#FFF" },
     });
@@ -143,7 +143,7 @@ describe("parseCustomThemes", () => {
     }
   });
 
-  it("reports a non-object root", () => {
+  it("THEME-7: reports a non-object root", () => {
     for (const raw of ["x", 5, [], true]) {
       const r = parseCustomThemes(raw);
       assert.equal(r.themes.size, 0);
@@ -151,7 +151,7 @@ describe("parseCustomThemes", () => {
     }
   });
 
-  it("skips only the invalid theme and reports each error", () => {
+  it("THEME-7: skips only the invalid theme and reports each error", () => {
     const cases: Record<string, unknown> = {
       missingTitle: { activity: "red" },
       badOptional: { title: "red", status: "nope" },
@@ -184,7 +184,7 @@ describe("computeCustomThemePalette", () => {
     ...over,
   });
 
-  it("follows the active kind unless the theme forces one", () => {
+  it("THEME-6: follows the active kind unless the theme forces one", () => {
     const dark = computeCustomThemePalette(spec(), "dark");
     const light = computeCustomThemePalette(spec(), "light");
     assert.notEqual(dark.editorBg, light.editorBg);
@@ -192,14 +192,14 @@ describe("computeCustomThemePalette", () => {
     assert.deepEqual(computeCustomThemePalette(spec({ kind: "dark" }), "light"), dark);
   });
 
-  it("uses a readable foreground override", () => {
+  it("PAL-5, THEME-6: uses a readable foreground override", () => {
     const p = computeCustomThemePalette(spec({ foreground: "#ffff00" }), "dark");
     for (const [, fg] of BAR_PAIRS(p)) {
       assert.equal(fg, "#ffff00");
     }
   });
 
-  it("falls back to a readable foreground when the override is unreadable", () => {
+  it("PAL-5: falls back to a readable foreground when the override is unreadable", () => {
     const p = computeCustomThemePalette(spec({ foreground: "#000000" }), "dark");
     for (const [bg, fg] of BAR_PAIRS(p)) {
       assert.notEqual(fg, "#000000");
@@ -209,52 +209,52 @@ describe("computeCustomThemePalette", () => {
 });
 
 describe("parseGitHead", () => {
-  it("reads a branch name", () => {
+  it("ALERT-3: reads a branch name", () => {
     assert.equal(parseGitHead("ref: refs/heads/main"), "main");
   });
-  it("keeps slashes in branch names", () => {
+  it("ALERT-3: keeps slashes in branch names", () => {
     assert.equal(parseGitHead("ref: refs/heads/feature/a/b"), "feature/a/b");
   });
-  it("ignores trailing newline and CRLF", () => {
+  it("ALERT-3: ignores trailing newline and CRLF", () => {
     assert.equal(parseGitHead("ref: refs/heads/main\n"), "main");
     assert.equal(parseGitHead("ref: refs/heads/main\r\n"), "main");
   });
-  it("returns undefined for a detached SHA or junk", () => {
+  it("ALERT-3: returns undefined for a detached SHA or junk", () => {
     assert.equal(parseGitHead("0123456789abcdef0123456789abcdef01234567\n"), undefined);
     assert.equal(parseGitHead(""), undefined);
   });
 });
 
 describe("matchesBranchPattern", () => {
-  it("matches exact names", () => {
+  it("ALERT-2: matches exact names", () => {
     assert.equal(matchesBranchPattern("main", ["main"]), true);
     assert.equal(matchesBranchPattern("dev", ["main", "master"]), false);
   });
-  it("matches wildcards", () => {
+  it("ALERT-2: matches wildcards", () => {
     assert.equal(matchesBranchPattern("release/1.2", ["release/*"]), true);
     assert.equal(matchesBranchPattern("release/", ["release/*"]), true);
     assert.equal(matchesBranchPattern("hotfix/1", ["release/*"]), false);
   });
-  it("does not treat regex metacharacters as regex", () => {
+  it("ALERT-2: does not treat regex metacharacters as regex", () => {
     assert.equal(matchesBranchPattern("featxx", ["feat.x"]), false);
     assert.equal(matchesBranchPattern("feat.x", ["feat.x"]), true);
     assert.equal(matchesBranchPattern("a+b", ["a+b"]), true);
     assert.equal(matchesBranchPattern("aab", ["a+b"]), false);
     assert.equal(matchesBranchPattern("(x)", ["(x)"]), true);
   });
-  it("requires a full match", () => {
+  it("ALERT-2: requires a full match", () => {
     assert.equal(matchesBranchPattern("main2", ["main"]), false);
     assert.equal(matchesBranchPattern("premain", ["main"]), false);
     assert.equal(matchesBranchPattern("x/release/1", ["release/*"]), false);
   });
-  it("returns false with no patterns", () => {
+  it("ALERT-2: returns false with no patterns", () => {
     assert.equal(matchesBranchPattern("main", []), false);
   });
 });
 
 describe("applyBranchAlert", () => {
   for (const kind of KINDS) {
-    it(`changes only the bars and keeps them readable (${kind})`, () => {
+    it(`ALERT-1, PAL-5: changes only the bars and keeps them readable (${kind})`, () => {
       const base = computeWorkspacePalette(12345, kind);
       const alerted = applyBranchAlert(base, "#c62828");
       assert.deepEqual(SURFACES(alerted), SURFACES(base));
@@ -266,7 +266,7 @@ describe("applyBranchAlert", () => {
       }
     });
   }
-  it("does not mutate the input palette", () => {
+  it("ALERT-6: does not mutate the input palette", () => {
     const base = computeWorkspacePalette(1, "dark");
     const copy = { ...base };
     applyBranchAlert(base, "#c62828");
@@ -275,7 +275,7 @@ describe("applyBranchAlert", () => {
 });
 
 describe("environmentFromRemoteName", () => {
-  it("maps known names", () => {
+  it("ALERT-4: maps known names", () => {
     assert.equal(environmentFromRemoteName("ssh-remote"), "ssh");
     assert.equal(environmentFromRemoteName("dev-container"), "container");
     assert.equal(environmentFromRemoteName("attached-container"), "container");
@@ -283,17 +283,17 @@ describe("environmentFromRemoteName", () => {
     assert.equal(environmentFromRemoteName("codespaces"), "codespaces");
     assert.equal(environmentFromRemoteName("tunnel"), "tunnel");
   });
-  it("returns undefined for local windows", () => {
+  it("ALERT-4: returns undefined for local windows", () => {
     assert.equal(environmentFromRemoteName(undefined), undefined);
     assert.equal(environmentFromRemoteName(""), undefined);
   });
-  it("maps unknown names to other", () => {
+  it("ALERT-4: maps unknown names to other", () => {
     assert.equal(environmentFromRemoteName("something-new"), "other");
   });
 });
 
 describe("applyEnvironmentCast", () => {
-  it("changes only the status bar", () => {
+  it("ALERT-4: changes only the status bar", () => {
     const base = computeWorkspacePalette(777, "dark");
     const cast = applyEnvironmentCast(base, "ssh");
     assert.equal(cast.statusBg, ENVIRONMENT_COLORS.ssh);

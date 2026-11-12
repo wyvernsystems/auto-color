@@ -19,12 +19,12 @@ import { computeThemePresetPalette, THEME_PRESET_CHOICES, THEME_PRESET_IDS, type
 const PRESETS = THEME_PRESET_IDS.filter((id): id is NamedThemePreset => id !== "auto");
 
 describe("parseColorChoice", () => {
-  it("parses auto", () => {
+  it("THEME-8: parses auto", () => {
     assert.deepEqual(parseColorChoice("auto"), { kind: "auto" });
     assert.deepEqual(parseColorChoice("  auto "), { kind: "auto" });
   });
 
-  it("parses seeds", () => {
+  it("THEME-8: parses seeds", () => {
     assert.deepEqual(parseColorChoice("seed:42"), { kind: "seed", seed: 42 });
     for (const bad of ["seed:0", "seed:-1", "seed:abc", "seed:", "seed:1.5", "seed:4294967296"]) {
       assert.equal(parseColorChoice(bad), undefined, bad);
@@ -32,26 +32,26 @@ describe("parseColorChoice", () => {
     assert.deepEqual(parseColorChoice("seed:4294967295"), { kind: "seed", seed: 4294967295 });
   });
 
-  it("parses preset ids", () => {
+  it("THEME-8: parses preset ids", () => {
     for (const preset of PRESETS) {
       assert.deepEqual(parseColorChoice(preset), { kind: "preset", preset });
     }
   });
 
-  it("parses hex and color names as colors", () => {
+  it("THEME-8: parses hex and color names as colors", () => {
     assert.deepEqual(parseColorChoice("#ABC"), { kind: "color", hex: "#aabbcc" });
     assert.deepEqual(parseColorChoice("#1E88E5"), { kind: "color", hex: "#1e88e5" });
     assert.deepEqual(parseColorChoice("Blue"), { kind: "color", hex: COMMON_COLORS.blue });
   });
 
-  it("parses custom themes", () => {
+  it("THEME-8: parses custom themes", () => {
     assert.deepEqual(parseColorChoice("custom:Brand"), { kind: "custom", name: "Brand" });
     assert.deepEqual(parseColorChoice("custom: Brand "), { kind: "custom", name: "Brand" });
     assert.equal(parseColorChoice("custom:"), undefined);
     assert.equal(parseColorChoice("custom:   "), undefined);
   });
 
-  it("rejects garbage", () => {
+  it("THEME-8: rejects garbage", () => {
     for (const bad of ["", "nonsense", "#12345", 5, null, undefined, {}]) {
       assert.equal(parseColorChoice(bad), undefined);
     }
@@ -66,12 +66,12 @@ describe("formatColorChoice", () => {
     { kind: "color", hex: "#1e88e5" },
     { kind: "custom", name: "My Brand" },
   ];
-  it("round-trips through parseColorChoice for every kind", () => {
+  it("THEME-8: round-trips through parseColorChoice for every kind", () => {
     for (const choice of choices) {
       assert.deepEqual(parseColorChoice(formatColorChoice(choice)), choice);
     }
   });
-  it("produces the documented string forms", () => {
+  it("THEME-8: produces the documented string forms", () => {
     assert.equal(formatColorChoice({ kind: "auto" }), "auto");
     assert.equal(formatColorChoice({ kind: "seed", seed: 7 }), "seed:7");
     assert.equal(formatColorChoice({ kind: "color", hex: "#aabbcc" }), "#aabbcc");
@@ -105,7 +105,7 @@ describe("computeChoicePalette", () => {
   const spec: CustomThemeSpec = { title: "#3366cc", activity: "#3366cc", status: "#cc6633" };
   const opts = { hash: 123456, themeKind: "dark" as const, customThemes: new Map([["Brand", spec]]) };
 
-  it("matches the core function for each kind", () => {
+  it("PAL-8: matches the core function for each kind", () => {
     for (const themeKind of ["dark", "light"] as const) {
       const o = { ...opts, themeKind };
       assert.deepEqual(computeChoicePalette({ kind: "auto" }, o), computeWorkspacePalette(opts.hash, themeKind));
@@ -118,7 +118,7 @@ describe("computeChoicePalette", () => {
     }
   });
 
-  it("throws naming an undefined custom theme", () => {
+  it("THEME-7: throws naming an undefined custom theme", () => {
     assert.throws(() => computeChoicePalette({ kind: "custom", name: "Missing" }, opts), /Missing/);
   });
 });

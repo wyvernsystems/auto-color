@@ -10,7 +10,7 @@ import {
 } from "./workspace-eligibility";
 
 describe("isFileNotFoundError", () => {
-  it("accepts only errors with the FileNotFound code", () => {
+  it("WRITE-8: accepts only errors with the FileNotFound code", () => {
     assert.equal(isFileNotFoundError({ code: "FileNotFound" }), true);
     assert.equal(isFileNotFoundError({ code: "NoPermissions" }), false);
     assert.equal(isFileNotFoundError(new Error("missing")), false);
@@ -19,14 +19,14 @@ describe("isFileNotFoundError", () => {
 });
 
 describe("settingsPathExists", () => {
-  it("returns true when stat succeeds", async () => {
+  it("WRITE-8: returns true when stat succeeds", async () => {
     assert.equal(
       await settingsPathExists(async () => undefined, "workspace settings"),
       true,
     );
   });
 
-  it("returns false only for an explicit FileNotFound error", async () => {
+  it("WRITE-8: returns false only for an explicit FileNotFound error", async () => {
     assert.equal(
       await settingsPathExists(
         async () => {
@@ -38,7 +38,7 @@ describe("settingsPathExists", () => {
     );
   });
 
-  it("wraps other filesystem errors with path context", async () => {
+  it("WRITE-8: wraps other filesystem errors with path context", async () => {
     const cause = { code: "NoPermissions" };
     await assert.rejects(
       settingsPathExists(
@@ -58,7 +58,7 @@ describe("settingsPathExists", () => {
 });
 
 describe("workspaceFileBlocksAutomaticColor", () => {
-  it("allows a valid workspace file without persisted settings", () => {
+  it("WRITE-1: allows a valid workspace file without persisted settings", () => {
     assert.equal(workspaceFileBlocksAutomaticColor("{}"), false);
     assert.equal(
       workspaceFileBlocksAutomaticColor('{"settings":{},"folders":[]}'),
@@ -66,7 +66,7 @@ describe("workspaceFileBlocksAutomaticColor", () => {
     );
   });
 
-  it("blocks a workspace file with non-empty settings", () => {
+  it("WRITE-1: blocks a workspace file with non-empty settings", () => {
     assert.equal(
       workspaceFileBlocksAutomaticColor(
         '{"settings":{"editor.fontSize":14}}',
@@ -75,7 +75,7 @@ describe("workspaceFileBlocksAutomaticColor", () => {
     );
   });
 
-  it("fails closed for malformed or unexpected workspace JSON", () => {
+  it("WRITE-3: fails closed for malformed or unexpected workspace JSON", () => {
     assert.equal(workspaceFileBlocksAutomaticColor("{ comments: true }"), true);
     assert.equal(workspaceFileBlocksAutomaticColor("null"), true);
     assert.equal(workspaceFileBlocksAutomaticColor("[]"), true);
@@ -83,22 +83,22 @@ describe("workspaceFileBlocksAutomaticColor", () => {
 });
 
 describe("manualRemovalBlocksAutomaticColor", () => {
-  it("blocks when a previously painted workspace no longer has managed colors", () => {
+  it("WRITE-5: blocks when a previously painted workspace no longer has managed colors", () => {
     assert.equal(manualRemovalBlocksAutomaticColor(true, false), true);
   });
 
-  it("allows a workspace the extension never painted", () => {
+  it("WRITE-5: allows a workspace the extension never painted", () => {
     assert.equal(manualRemovalBlocksAutomaticColor(false, false), false);
     assert.equal(manualRemovalBlocksAutomaticColor(false, true), false);
   });
 
-  it("allows a painted workspace whose managed colors are still present", () => {
+  it("WRITE-5: allows a painted workspace whose managed colors are still present", () => {
     assert.equal(manualRemovalBlocksAutomaticColor(true, true), false);
   });
 });
 
 describe("AutomaticWriteGate", () => {
-  it("denies writes until a refresh confirms the workspace is unblocked", async () => {
+  it("WRITE-4: denies writes until a refresh confirms the workspace is unblocked", async () => {
     let finishRefresh: ((blocked: boolean) => void) | undefined;
     const blocked = new Promise<boolean>((resolve) => {
       finishRefresh = resolve;
@@ -113,13 +113,13 @@ describe("AutomaticWriteGate", () => {
     assert.equal(gate.isAllowed(), true);
   });
 
-  it("keeps writes denied when the workspace is blocked", async () => {
+  it("WRITE-4: keeps writes denied when the workspace is blocked", async () => {
     const gate = new AutomaticWriteGate();
     await gate.refresh(async () => true);
     assert.equal(gate.isAllowed(), false);
   });
 
-  it("ignores an older refresh that finishes after a newer one", async () => {
+  it("WRITE-4: ignores an older refresh that finishes after a newer one", async () => {
     let finishFirst: ((blocked: boolean) => void) | undefined;
     const firstResult = new Promise<boolean>((resolve) => {
       finishFirst = resolve;
@@ -136,12 +136,12 @@ describe("AutomaticWriteGate", () => {
 });
 
 describe("SelfWriteTracker", () => {
-  it("reports no recent write before the first mark", () => {
+  it("WRITE-7: reports no recent write before the first mark", () => {
     const tracker = new SelfWriteTracker(2000);
     assert.equal(tracker.isRecent(1000), false);
   });
 
-  it("reports a recent write within the window and forgets it after", () => {
+  it("WRITE-7: reports a recent write within the window and forgets it after", () => {
     const tracker = new SelfWriteTracker(2000);
     tracker.mark(1000);
     assert.equal(tracker.isRecent(1000), true);

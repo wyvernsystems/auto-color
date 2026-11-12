@@ -25,11 +25,11 @@ function colorsOf(text: string): Record<string, string> {
 }
 
 describe("renderVsCodeSettings", () => {
-  it("exposes the workspace-relative settings path", () => {
+  it("CLI-8: exposes the workspace-relative settings path", () => {
     assert.equal(VSCODE_SETTINGS_PATH, ".vscode/settings.json");
   });
 
-  it("creates settings with color customizations when no file exists", () => {
+  it("CLI-8: creates settings with color customizations when no file exists", () => {
     const text = renderVsCodeSettings({
       existingText: undefined,
       hash,
@@ -40,7 +40,7 @@ describe("renderVsCodeSettings", () => {
     assert.match(colorsOf(text)[TITLE_BG] ?? "", HEX);
   });
 
-  it("produces exactly the extension's color map", () => {
+  it("CLI-8, PAL-8: produces exactly the extension's color map", () => {
     const text = renderVsCodeSettings({
       existingText: '{"workbench.colorCustomizations":{"editor.cursor":"#ff0000"}}',
       hash,
@@ -58,7 +58,7 @@ describe("renderVsCodeSettings", () => {
     );
   });
 
-  it("paints the named theme palette when a preset is given", () => {
+  it("CLI-8: paints the named theme palette when a preset is given", () => {
     const text = renderVsCodeSettings({
       existingText: undefined,
       hash,
@@ -78,7 +78,7 @@ describe("renderVsCodeSettings", () => {
     );
   });
 
-  it("preserves unrelated settings keys", () => {
+  it("CLI-6: preserves unrelated settings keys", () => {
     const text = renderVsCodeSettings({
       existingText: '{"editor.fontSize":14}',
       hash,
@@ -89,7 +89,7 @@ describe("renderVsCodeSettings", () => {
     assert.equal(parsed["editor.fontSize"], 14);
   });
 
-  it("throws when the file cannot be parsed as strict JSON", () => {
+  it("CLI-6: throws when the file cannot be parsed as strict JSON", () => {
     assert.throws(
       () =>
         renderVsCodeSettings({
@@ -102,7 +102,7 @@ describe("renderVsCodeSettings", () => {
     );
   });
 
-  it("throws when colorCustomizations is not an object", () => {
+  it("CLI-6: throws when colorCustomizations is not an object", () => {
     assert.throws(() =>
       renderVsCodeSettings({
         existingText: '{"workbench.colorCustomizations":"oops"}',
@@ -113,7 +113,7 @@ describe("renderVsCodeSettings", () => {
     );
   });
 
-  it("removes only managed keys and drops an emptied color object", () => {
+  it("CLI-5: removes only managed keys and drops an emptied color object", () => {
     const painted = renderVsCodeSettings({
       existingText: '{"editor.fontSize":14}',
       hash,

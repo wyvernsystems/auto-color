@@ -16,14 +16,14 @@ const NAMED_PRESETS = THEME_PRESET_IDS.filter(
 );
 
 describe("parseThemePreset", () => {
-  it("returns auto when the value is missing or unknown", () => {
+  it("THEME-1: returns auto when the value is missing or unknown", () => {
     assert.equal(parseThemePreset(undefined), "auto");
     assert.equal(parseThemePreset(null), "auto");
     assert.equal(parseThemePreset("neon-vaporwave"), "auto");
     assert.equal(parseThemePreset(42), "auto");
   });
 
-  it("returns the preset when the value is a known id", () => {
+  it("THEME-1: returns the preset when the value is a known id", () => {
     for (const id of THEME_PRESET_IDS) {
       assert.equal(parseThemePreset(id), id);
     }
@@ -31,7 +31,7 @@ describe("parseThemePreset", () => {
 });
 
 describe("THEME_PRESET_CHOICES", () => {
-  it("lists every preset id exactly once with auto first", () => {
+  it("THEME-2: lists every preset id exactly once with auto first", () => {
     assert.deepEqual(
       THEME_PRESET_CHOICES.map((c) => c.id),
       [...THEME_PRESET_IDS],
@@ -39,7 +39,7 @@ describe("THEME_PRESET_CHOICES", () => {
     assert.equal(THEME_PRESET_CHOICES[0].id, "auto");
   });
 
-  it("gives every choice a label and description", () => {
+  it("THEME-2: gives every choice a label and description", () => {
     for (const choice of THEME_PRESET_CHOICES) {
       assert.ok(choice.label.length > 0, choice.id);
       assert.ok(choice.description.length > 0, choice.id);
@@ -48,7 +48,7 @@ describe("THEME_PRESET_CHOICES", () => {
 });
 
 describe("computeThemePresetPalette", () => {
-  it("returns valid hex for every color when preset and kind vary", () => {
+  it("PAL-10: returns valid hex for every color when preset and kind vary", () => {
     for (const preset of NAMED_PRESETS) {
       for (const kind of ["dark", "light"] as const) {
         const palette = computeThemePresetPalette(preset, kind);
@@ -74,27 +74,27 @@ describe("computeThemePresetPalette", () => {
     assert.ok(relativeLuminance(palette.titleBg) < 0.1, palette.titleBg);
   });
 
-  it("forces its own light or dark surfaces when the preset has a fixed style", () => {
+  it("THEME-3: forces its own light or dark surfaces when the preset has a fixed style", () => {
     const light = computeThemePresetPalette("githubLight", "dark");
     assert.ok(relativeLuminance(light.editorBg) > 0.5, light.editorBg);
     const dark = computeThemePresetPalette("githubDark", "light");
     assert.ok(relativeLuminance(dark.editorBg) < 0.1, dark.editorBg);
   });
 
-  it("follows the active theme kind when the preset is rainbow", () => {
+  it("THEME-3: follows the active theme kind when the preset is rainbow", () => {
     const dark = computeThemePresetPalette("rainbow", "dark");
     assert.ok(relativeLuminance(dark.editorBg) < 0.1, dark.editorBg);
     const light = computeThemePresetPalette("rainbow", "light");
     assert.ok(relativeLuminance(light.editorBg) > 0.5, light.editorBg);
   });
 
-  it("gives each bar a distinct color when the preset is rainbow", () => {
+  it("THEME-3: gives each bar a distinct color when the preset is rainbow", () => {
     const palette = computeThemePresetPalette("rainbow", "dark");
     const bars = new Set([palette.titleBg, palette.activityBg, palette.statusBg]);
     assert.equal(bars.size, 3);
   });
 
-  it("derives dark bar text when a light preset has no foreground override", () => {
+  it("PAL-5: derives dark bar text when a light preset has no foreground override", () => {
     const palette: WorkspacePalette = computeThemePresetPalette(
       "solarizedLight",
       "dark",
@@ -132,7 +132,7 @@ function contrastRatio(a: string, b: string): number {
 }
 
 describe("community, novelty, seasonal, and pride presets", () => {
-  it("lists each new preset with its label when choices are built", () => {
+  it("THEME-2: lists each new preset with its label when choices are built", () => {
     for (const [id, label] of Object.entries(NEW_PRESETS)) {
       assert.ok((THEME_PRESET_IDS as readonly string[]).includes(id), id);
       const choice = THEME_PRESET_CHOICES.find((c) => c.id === id);
@@ -140,7 +140,7 @@ describe("community, novelty, seasonal, and pride presets", () => {
     }
   });
 
-  it("keeps bar text at WCAG 4.5:1 or better when a new preset renders in either theme", () => {
+  it("PAL-5: keeps bar text at WCAG 4.5:1 or better when a new preset renders in either theme", () => {
     for (const id of Object.keys(NEW_PRESETS)) {
       for (const kind of ["dark", "light"] as const) {
         const p = computeThemePresetPalette(id as NamedThemePreset, kind);
@@ -158,7 +158,7 @@ describe("community, novelty, seasonal, and pride presets", () => {
 });
 
 describe("existing presets bar contrast", () => {
-  it("keeps every existing preset's bar text at WCAG AA contrast", () => {
+  it("PAL-5: keeps every existing preset's bar text at WCAG AA contrast", () => {
     const existing = NAMED_PRESETS.filter((id) => !(id in NEW_PRESETS));
     for (const id of existing) {
       for (const kind of ["dark", "light"] as const) {
@@ -177,7 +177,7 @@ describe("existing presets bar contrast", () => {
 });
 
 describe("auto-color.theme setting", () => {
-  it("offers every preset plus color and custom, in order", async () => {
+  it("THEME-1: offers every preset plus color and custom, in order", async () => {
     const { readFile } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const manifest = JSON.parse(await readFile(join(__dirname, "..", "..", "package.json"), "utf8"));
